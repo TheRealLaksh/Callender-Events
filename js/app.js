@@ -4,7 +4,7 @@
 
 // --- Global State and Counters ---
 let events = [];
-let eventIdCounter = 1; 
+let eventIdCounter = 1;
 let currentReminders = []; // Reminders for the currently active form input
 
 // --- Constants and Mapping ---
@@ -52,16 +52,16 @@ let remindersListEl, reminderSelectionArea, customReminderValue, customReminderU
  * @param {string} type - 'success' or 'error'.
  */
 function showMessage(message, type = 'success') {
-    if (!messageBox) return; 
-    
+    if (!messageBox) return;
+
     messageBox.textContent = message;
     const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
     messageBox.className = `message-box p-4 rounded-xl text-white font-medium shadow-lg ${bgColor}`;
     messageBox.classList.remove('hidden');
-    
+
     // Trigger CSS animation restart
     messageBox.style.animation = 'none';
-    void messageBox.offsetWidth; 
+    void messageBox.offsetWidth;
     messageBox.style.animation = null;
 }
 
@@ -86,19 +86,19 @@ function getReminderDisplayText(isoDuration) {
     if (durationMap[isoDuration]) {
         return durationMap[isoDuration];
     }
-    
+
     const match = isoDuration.match(durationRegex);
     if (match) {
         // Match 1 & 2 for Days/Hours (e.g., -P2D)
-        if (match[1]) { 
+        if (match[1]) {
             const value = match[1];
             const unit = match[2];
             return `${value} ${unit === 'D' ? 'Day(s)' : 'Hour(s)'}`;
-        // Match 3 & 4 for Hours/Minutes (e.g., -PT15M)
-        } else if (match[3]) { 
-             const value = match[3];
-             const unit = match[4];
-             return `${value} ${unit === 'H' ? 'Hour(s)' : 'Min(s)'}`;
+            // Match 3 & 4 for Hours/Minutes (e.g., -PT15M)
+        } else if (match[3]) {
+            const value = match[3];
+            const unit = match[4];
+            return `${value} ${unit === 'H' ? 'Hour(s)' : 'Min(s)'}`;
         }
     }
     return 'Custom Alarm';
@@ -122,7 +122,7 @@ function renderReminders() {
 
     // Hide selection area if reminders are present, keeping UI compact
     if (currentReminders.length > 0 && reminderSelectionArea) {
-         reminderSelectionArea.classList.add('hidden');
+        reminderSelectionArea.classList.add('hidden');
     }
 }
 
@@ -146,7 +146,7 @@ function addReminderToForm(duration) {
 function addCustomReminder() {
     const value = parseInt(customReminderValue.value);
     const unit = customReminderUnit.value;
-    
+
     if (isNaN(value) || value <= 0) {
         showMessage('Please enter a valid time value (greater than 0).', 'error');
         return;
@@ -172,7 +172,7 @@ function removeReminder(index) {
  * Toggles the visibility of the reminder selection area.
  */
 function toggleReminderArea() {
-    if(reminderSelectionArea) {
+    if (reminderSelectionArea) {
         reminderSelectionArea.classList.toggle('hidden');
     }
 }
@@ -188,7 +188,7 @@ function toggleReminderArea() {
  */
 function renderEvents(newItemId = null) {
     if (events.length === 0) {
-        eventListEl.innerHTML = ''; 
+        eventListEl.innerHTML = '';
         emptyStateEl.classList.remove('hidden');
         eventCountEl.textContent = '0';
         return;
@@ -203,19 +203,19 @@ function renderEvents(newItemId = null) {
     eventListEl.innerHTML = events.map(event => {
         const dateTimeStart = new Date(event.datetimeStart);
         const dateTimeEnd = new Date(event.datetimeEnd);
-        
+
         const formattedDate = dateTimeStart.toLocaleDateString('en-US', {
             year: 'numeric', month: 'short', day: 'numeric'
         });
-        
+
         const formattedTime = `${dateTimeStart.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - ${dateTimeEnd.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-        
+
         // Display Timezone abbreviation (e.g., IST, PST)
         const timezoneDisplay = event.timezone && event.timezone !== 'Asia/Kolkata' ? ` (${event.timezone.split('/')[1] || event.timezone})` : ' (IST)';
 
         // Format and display multiple reminders
         let remindersDisplay = '';
-        if (event.reminders && event.reminders.length > 0) { 
+        if (event.reminders && event.reminders.length > 0) {
             const reminderTexts = event.reminders.map(getReminderDisplayText).join(', ');
             remindersDisplay = `<p class="text-xs text-emerald-400 mt-1">🔔 ${reminderTexts} Before</p>`;
         }
@@ -274,8 +274,8 @@ function duplicateEvent(id) {
         id: newId,
         name: originalEvent.name + " (Copy)",
         location: originalEvent.location,
-        datetimeStart: originalEvent.datetimeStart, 
-        datetimeEnd: originalEvent.datetimeEnd,     
+        datetimeStart: originalEvent.datetimeStart,
+        datetimeEnd: originalEvent.datetimeEnd,
         timezone: originalEvent.timezone,
         reminders: [...originalEvent.reminders], // Deep copy the reminders array
         description: originalEvent.description
@@ -315,42 +315,45 @@ function toggleClearModal(show) {
  */
 function handleEventSubmit(e) {
     e.preventDefault();
-    
+
     const name = document.getElementById('event-name').value.trim();
     const location = document.getElementById('event-location').value.trim();
     const datetimeStart = eventDateTimeStart.value;
-    const datetimeEnd = eventDateTimeEnd.value;
+    let datetimeEnd = eventDateTimeEnd.value; // Now optional
     const timezone = document.getElementById('event-timezone').value;
     const description = document.getElementById('event-description').value.trim();
 
-    // Simple validation
-    if (!name || !datetimeStart || !datetimeEnd) {
-        showMessage('Please enter event name, start time, and end time.', 'error');
+    // Validation: Start Time is still required
+    if (!name || !datetimeStart) {
+        showMessage('Please enter the event name and start date/time.', 'error');
         return;
     }
 
-    if (new Date(datetimeStart) >= new Date(datetimeEnd)) {
-        showMessage('The start time must be before the end time.', 'error');
+    // NEW LOGIC: If end date is missing, set it equal to the start date for a valid VEVENT block.
+    if (!datetimeEnd) {
+        datetimeEnd = datetimeStart;
+    } else if (new Date(datetimeStart) > new Date(datetimeEnd)) {
+        showMessage('The end date/time cannot be before the start date/time.', 'error');
         return;
     }
-    
+
     const newId = eventIdCounter++;
 
     const newEvent = {
         id: newId,
         name,
         location,
-        datetimeStart, 
-        datetimeEnd,
+        datetimeStart,
+        datetimeEnd, // Guaranteed to be set here
         timezone,
-        reminders: [...currentReminders], 
+        reminders: [...currentReminders],
         description
     };
 
     events.push(newEvent);
     renderEvents(newId);
     eventForm.reset();
-    currentReminders = []; // Reset reminders for the next event
+    currentReminders = [];
     renderReminders();
     showMessage('Event added successfully!', 'success');
 }
@@ -365,12 +368,12 @@ function initializeApp() {
     eventCountEl = document.getElementById('event-count');
     emptyStateEl = document.getElementById('empty-state');
     messageBox = document.getElementById('message-box');
-    
-    confirmClearModal = document.getElementById('confirm-clear-modal'); 
-    eventsToClearCount = document.getElementById('events-to-clear-count'); 
+
+    confirmClearModal = document.getElementById('confirm-clear-modal');
+    eventsToClearCount = document.getElementById('events-to-clear-count');
     eventDateTimeStart = document.getElementById('event-datetime-start');
     eventDateTimeEnd = document.getElementById('event-datetime-end');
-    
+
     remindersListEl = document.getElementById('reminders-list');
     reminderSelectionArea = document.getElementById('reminder-selection-area');
     customReminderValue = document.getElementById('custom-reminder-value');
@@ -382,7 +385,7 @@ function initializeApp() {
     if (document.getElementById('clear-all-btn')) {
         document.getElementById('clear-all-btn').addEventListener('click', () => toggleClearModal(true));
     }
-    
+
     if (document.getElementById('execute-clear-btn')) {
         document.getElementById('execute-clear-btn').addEventListener('click', () => {
             const count = events.length;
@@ -393,7 +396,7 @@ function initializeApp() {
             showMessage(`Successfully cleared all ${count} events.`, 'success');
         });
     }
-    
+
     // Initial UI render
     renderEvents();
     renderReminders();
@@ -432,7 +435,7 @@ function createAlarmBlock(reminderValue) {
     return [
         'BEGIN:VALARM',
         'ACTION:DISPLAY',
-        `DESCRIPTION:Reminder for Calibridge event`, 
+        `DESCRIPTION:Reminder for Calibridge event`,
         `TRIGGER:${reminderValue}`, // e.g., TRIGGER:-PT15M
         `UID:${generateUniqueId()}-alarm`,
         `DTSTAMP:${now}`,
@@ -448,9 +451,9 @@ document.getElementById('export-btn')?.addEventListener('click', () => {
         showMessage('Please add events before exporting.', 'error');
         return;
     }
-    
+
     const fileNameInput = document.getElementById('export-file-name').value.trim();
-    let fileName = fileNameInput || 'Calibridge_Export'; 
+    let fileName = fileNameInput || 'Calibridge_Export';
     if (!fileName.toLowerCase().endsWith('.ics')) {
         fileName += '.ics';
     }
@@ -458,15 +461,15 @@ document.getElementById('export-btn')?.addEventListener('click', () => {
     const icsLines = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//Calibridge//Calendar Export v3.0//EN', 
+        'PRODID:-//Calibridge//Calendar Export v3.0//EN',
         'CALSCALE:GREGORIAN',
         IST_VTIMEZONE // Include VTIMEZONE definition for IST
     ];
 
     const now = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', 'T') + 'Z';
-    
+
     events.forEach(event => {
-        const tzid = event.timezone || 'Asia/Kolkata'; 
+        const tzid = event.timezone || 'Asia/Kolkata';
 
         const dtStart = formatICSDateTZ(event.datetimeStart, tzid);
         const dtEnd = formatICSDateTZ(event.datetimeEnd, tzid);
@@ -474,10 +477,10 @@ document.getElementById('export-btn')?.addEventListener('click', () => {
         icsLines.push('BEGIN:VEVENT');
         icsLines.push(`UID:${generateUniqueId()}`);
         icsLines.push(`DTSTAMP:${now}`);
-        icsLines.push(`DTSTART;${dtStart}`); 
+        icsLines.push(`DTSTART;${dtStart}`);
         icsLines.push(`DTEND;${dtEnd}`);
-        icsLines.push(`SUMMARY:${event.name.replace(/(\r\n|\n|\r)/gm, " ")}`); 
-        
+        icsLines.push(`SUMMARY:${event.name.replace(/(\r\n|\n|\r)/gm, " ")}`);
+
         if (event.location) {
             icsLines.push(`LOCATION:${event.location.replace(/(\r\n|\n|\r)/gm, " ")}`);
         }
@@ -485,11 +488,11 @@ document.getElementById('export-btn')?.addEventListener('click', () => {
             const desc = event.description.replace(/(\r\n|\n|\r)/gm, "\\n");
             icsLines.push(`DESCRIPTION:${desc}`);
         }
-        
+
         // Add multiple VALARM blocks for each reminder
         if (event.reminders && event.reminders.length > 0) {
             event.reminders.forEach(reminder => {
-                 icsLines.push(createAlarmBlock(reminder));
+                icsLines.push(createAlarmBlock(reminder));
             });
         }
 
@@ -500,11 +503,11 @@ document.getElementById('export-btn')?.addEventListener('click', () => {
 
     const icsContent = icsLines.join('\r\n');
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    
+
     // Trigger download
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = fileName; 
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -520,17 +523,17 @@ function formatICSDateToISO(icsDate) {
     let isoDate;
     if (icsDate.includes('T')) {
         // Date-Time format (YYYYMMDDTHHMMSS)
-        isoDate = 
-            icsDate.substring(0, 4) + '-' + 
-            icsDate.substring(4, 6) + '-' + 
-            icsDate.substring(6, 8) + 'T' + 
-            icsDate.substring(9, 11) + ':' + 
+        isoDate =
+            icsDate.substring(0, 4) + '-' +
+            icsDate.substring(4, 6) + '-' +
+            icsDate.substring(6, 8) + 'T' +
+            icsDate.substring(9, 11) + ':' +
             icsDate.substring(11, 13);
     } else {
         // Date-only format (YYYYMMDD) - treat as all-day start at 00:00
-        isoDate = 
-            icsDate.substring(0, 4) + '-' + 
-            icsDate.substring(4, 6) + '-' + 
+        isoDate =
+            icsDate.substring(0, 4) + '-' +
+            icsDate.substring(4, 6) + '-' +
             icsDate.substring(6, 8) + 'T00:00';
     }
     return isoDate;
@@ -547,7 +550,7 @@ function parseICS(icsContent) {
     lines.forEach(line => {
         // Skip continuation lines
         if (line.startsWith(' ')) {
-            return; 
+            return;
         }
 
         if (line.startsWith('BEGIN:VEVENT')) {
@@ -556,9 +559,9 @@ function parseICS(icsContent) {
                 datetimeStart: '',
                 datetimeEnd: '',
                 description: '',
-                location: '', 
+                location: '',
                 timezone: 'Asia/Kolkata', // Default timezone on import
-                reminders: [] 
+                reminders: []
             };
         } else if (line.startsWith('END:VEVENT') && currentEvent) {
             // Validate and push event
@@ -566,7 +569,7 @@ function parseICS(icsContent) {
                 // If DTEND is missing, default to 1 hour duration
                 if (!currentEvent.datetimeEnd) {
                     const start = new Date(currentEvent.datetimeStart);
-                    const end = new Date(start.getTime() + 60 * 60 * 1000); 
+                    const end = new Date(start.getTime() + 60 * 60 * 1000);
                     currentEvent.datetimeEnd = end.toISOString().substring(0, 16);
                 }
                 importedEvents.push(currentEvent);
@@ -580,7 +583,7 @@ function parseICS(icsContent) {
                 currentEvent.name = value.replace(/\\n/g, '\n');
             } else if (key.startsWith('DESCRIPTION')) {
                 currentEvent.description = value.replace(/\\n/g, '\n');
-            } else if (key.startsWith('LOCATION')) { 
+            } else if (key.startsWith('LOCATION')) {
                 currentEvent.location = value.replace(/\\n/g, '\n');
             } else if (key.startsWith('DTSTART')) {
                 const tzidMatch = key.match(/TZID=([^;,\r\n]+)/);
@@ -592,7 +595,7 @@ function parseICS(icsContent) {
                     currentEvent.datetimeStart = formatICSDateToISO(dateValueMatch[0]);
                 }
             } else if (key.startsWith('DTEND')) {
-                 const dateValueMatch = value.match(/(\d{8}T\d{6}|\d{8})/);
+                const dateValueMatch = value.match(/(\d{8}T\d{6}|\d{8})/);
                 if (dateValueMatch) {
                     currentEvent.datetimeEnd = formatICSDateToISO(dateValueMatch[0]);
                 }
@@ -600,10 +603,10 @@ function parseICS(icsContent) {
                 // Extract negative duration triggers (reminders)
                 const triggerMatch = line.match(/TRIGGER:(-P[0-9]+[DTWHMS])/);
                 if (triggerMatch) {
-                     // Check if reminder is already present to avoid duplicates from VALARM blocks
-                     if (!currentEvent.reminders.includes(triggerMatch[1])) {
+                    // Check if reminder is already present to avoid duplicates from VALARM blocks
+                    if (!currentEvent.reminders.includes(triggerMatch[1])) {
                         currentEvent.reminders.push(triggerMatch[1]);
-                     }
+                    }
                 }
             }
         }
@@ -621,7 +624,7 @@ function importICS(event) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         try {
             const icsContent = e.target.result;
             const importedEvents = parseICS(icsContent);
@@ -630,11 +633,11 @@ function importICS(event) {
                 showMessage('No valid events found in the .ics file.', 'error');
                 return;
             }
-            
-            let lastImportedId = null; 
+
+            let lastImportedId = null;
             importedEvents.forEach(impEvent => {
-                lastImportedId = eventIdCounter++; 
-                events.push({...impEvent, id: lastImportedId});
+                lastImportedId = eventIdCounter++;
+                events.push({ ...impEvent, id: lastImportedId });
             });
 
             renderEvents(lastImportedId);
@@ -647,8 +650,8 @@ function importICS(event) {
         // Clear the file input for re-upload capability
         event.target.value = '';
     };
-    
-    reader.onerror = function() {
+
+    reader.onerror = function () {
         showMessage('Error reading file.', 'error');
         event.target.value = '';
     };
