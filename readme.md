@@ -1,6 +1,6 @@
 # 📅 Calibridge - Seamless Calendar Bridge
 
-**Live Demo:** [www.events.lakshp.live](https://www.google.com/search?q=https://www.events.lakshp.live)
+**Live Demo:** [www.events.lakshp.live](https://events.lakshp.live)
 
 Calibridge is a premium, high-utility tool designed to simplify the creation, management, and export of calendar events. It generates industry-standard **.ics files** that are universally compatible with major calendar services like **Google Calendar, Outlook, Notion, and Apple Calendar (iCal)**, ensuring your scheduling is reliable and consistent across all platforms.
 
