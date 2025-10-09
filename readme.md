@@ -39,3 +39,21 @@ Calibridge is a premium, high-utility tool designed to simplify the creation, ma
 ## 📁 Project Structure
 
 For easy maintenance and scalability, the project uses a standard file structure:
+calibridge-project/
+|-- index.html          # Main HTML structure, styling links, and favicon setup.
+|-- README.md           # Project documentation.
+|-- assets/
+|   -- calendar.jpg    # Favicon image (requires converting to .png for best practice). |-- css/ |   -- styles.css      # All custom dark theme CSS and keyframes.
+|-- js/
+`-- app.js          # Core application logic, event handlers, and iCalendar logic.
+## ⚙️ Local Setup
+
+1. **Clone the Repository:**
+git clone [https://github.com/TheRealLaksh/Callender-Events] calibridge-project
+cd calibridge-project
+2. **Open in Browser:**
+Open the `index.html` file directly in your web browser to start using the app.
+
+## 👤 License & Ownership
+
+© 2025 Calibridge. All rights reserved. Laksh Pradhwani.
