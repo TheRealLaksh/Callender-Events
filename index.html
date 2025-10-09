@@ -88,124 +88,118 @@
 
                     <!-- END DATE & TIME -->
                     <div>
-                        <div>
-                            <label for="event-datetime-end" class="block text-sm font-medium text-slate-300 mb-1">End
-                                Date & Time</label>
-                            <div class="relative">
-                                <input type="datetime-local" id="event-datetime-end" class="w-full">
-                                <span
-                                    class="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-400 pointer-events-none">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="event-timezone" class="block text-sm font-medium text-slate-300 mb-1">Time Zone
-                                (Optional)</label>
-                            <select id="event-timezone" class="w-full">
-                                <option value="Asia/Kolkata">IST (Asia/Kolkata) - Default</option>
-                                <option value="America/New_York">EST/EDT (New York)</option>
-                                <option value="Europe/London">GMT/BST (London)</option>
-                                <option value="Europe/Paris">CET/CEST (Paris)</option>
-                                <option value="America/Los_Angeles">PST/PDT (Los Angeles)</option>
-                                <option value="Asia/Tokyo">JST (Tokyo)</option>
-                                <option value="Australia/Sydney">AEST/AEDT (Sydney)</option>
-                            </select>
-                        </div>
-
-                        <!-- MULTIPLE REMINDERS INPUT AREA -->
-                        <div class="space-y-3 p-4 border border-slate-700 rounded-lg">
-                            <label class="block text-sm font-medium text-slate-300">Reminders</label>
-
-                            <!-- List of current reminders -->
-                            <div id="reminders-list" class="flex flex-wrap gap-2 mb-2 min-h-[20px]">
-                                <!-- Reminders will be added here by JS -->
-                            </div>
-
-                            <!-- Add Reminder Button -->
-                            <button type="button" id="add-reminder-btn"
-                                class="btn bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 w-full text-sm py-2 px-3 min-h-[30px]"
-                                onclick="toggleReminderArea()">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        <label for="event-datetime-end" class="block text-sm font-medium text-slate-300 mb-1">End Date &
+                            Time</label>
+                        <div class="relative">
+                            <input type="datetime-local" id="event-datetime-end" class="w-full">
+                            <span
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-400 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                Add Reminder
-                            </button>
+                            </span>
+                        </div>
+                    </div>
 
-                            <!-- Selection Area (Initially Hidden) -->
-                            <div id="reminder-selection-area"
-                                class="hidden space-y-3 pt-3 border-t border-slate-700/50">
-                                <p class="text-xs text-slate-400 font-semibold mb-2">Select Preset or Custom:</p>
+                    <div>
+                        <label for="event-timezone" class="block text-sm font-medium text-slate-300 mb-1">Time Zone
+                            (Optional)</label>
+                        <select id="event-timezone" class="w-full">
+                            <option value="Asia/Kolkata">IST (Asia/Kolkata) - Default</option>
+                            <option value="America/New_York">EST/EDT (New York)</option>
+                            <option value="Europe/London">GMT/BST (London)</option>
+                            <option value="Europe/Paris">CET/CEST (Paris)</option>
+                            <option value="America/Los_Angeles">PST/PDT (Los Angeles)</option>
+                            <option value="Asia/Tokyo">JST (Tokyo)</option>
+                            <option value="Australia/Sydney">AEST/AEDT (Sydney)</option>
+                        </select>
+                    </div>
 
-                                <!-- Preset Reminders -->
-                                <div class="grid grid-cols-2 gap-2 text-sm">
-                                    <button type="button"
-                                        class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                        onclick="addReminderToForm('-PT5M')">5 Min Before</button>
-                                    <button type="button"
-                                        class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                        onclick="addReminderToForm('-PT15M')">15 Min Before</button>
-                                    <button type="button"
-                                        class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                        onclick="addReminderToForm('-PT1H')">1 Hour Before</button>
-                                    <button type="button"
-                                        class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                        onclick="addReminderToForm('-PT2H')">2 Hours Before</button>
-                                    <button type="button"
-                                        class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                        onclick="addReminderToForm('-P1D')">1 Day Before</button>
-                                    <button type="button"
-                                        class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                        onclick="addReminderToForm('-P2D')">2 Days Before</button>
-                                </div>
+                    <!-- MULTIPLE REMINDERS INPUT AREA -->
+                    <div class="space-y-3 p-4 border border-slate-700 rounded-lg">
+                        <label class="block text-sm font-medium text-slate-300">Reminders</label>
 
-                                <!-- Custom Reminder Input -->
-                                <div class="flex gap-2 pt-2 border-t border-slate-700/50">
-                                    <input type="number" id="custom-reminder-value" class="w-1/3" placeholder="Time"
-                                        min="1">
-                                    <select type="number" id="custom-reminder-unit" class="w-1/3">
-                                        <option value="M">Minutes</option>
-                                        <option value="H">Hours</option>
-                                        <option value="D">Days</option>
-                                    </select>
-                                    <button type="button"
-                                        class="btn btn-secondary w-1/3 py-1.5 px-2 text-xs min-h-[30px]"
-                                        onclick="addCustomReminder()">Set Custom</button>
-                                </div>
+                        <!-- List of current reminders -->
+                        <div id="reminders-list" class="flex flex-wrap gap-2 mb-2 min-h-[20px]">
+                            <!-- Reminders will be added here by JS -->
+                        </div>
+
+                        <!-- Add Reminder Button -->
+                        <button type="button" id="add-reminder-btn"
+                            class="btn bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 w-full text-sm py-2 px-3 min-h-[30px]"
+                            onclick="toggleReminderArea()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add Reminder
+                        </button>
+
+                        <!-- Selection Area (Initially Hidden) -->
+                        <div id="reminder-selection-area" class="hidden space-y-3 pt-3 border-t border-slate-700/50">
+                            <p class="text-xs text-slate-400 font-semibold mb-2">Select Preset or Custom:</p>
+
+                            <!-- Preset Reminders -->
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <button type="button"
+                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
+                                    onclick="addReminderToForm('-PT5M')">5 Min Before</button>
+                                <button type="button"
+                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
+                                    onclick="addReminderToForm('-PT15M')">15 Min Before</button>
+                                <button type="button"
+                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
+                                    onclick="addReminderToForm('-PT1H')">1 Hour Before</button>
+                                <button type="button"
+                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
+                                    onclick="addReminderToForm('-PT2H')">2 Hours Before</button>
+                                <button type="button"
+                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
+                                    onclick="addReminderToForm('-P1D')">1 Day Before</button>
+                                <button type="button"
+                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
+                                    onclick="addReminderToForm('-P2D')">2 Days Before</button>
                             </div>
 
+                            <!-- Custom Reminder Input -->
+                            <div class="flex gap-2 pt-2 border-t border-slate-700/50">
+                                <input type="number" id="custom-reminder-value" class="w-1/3" placeholder="Time"
+                                    min="1">
+                                <select type="number" id="custom-reminder-unit" class="w-1/3">
+                                    <option value="M">Minutes</option>
+                                    <option value="H">Hours</option>
+                                    <option value="D">Days</option>
+                                </select>
+                                <button type="button" class="btn btn-secondary w-1/3 py-1.5 px-2 text-xs min-h-[30px]"
+                                    onclick="addCustomReminder()">Set Custom</button>
+                            </div>
                         </div>
-                        <!-- END MULTIPLE REMINDERS INPUT AREA -->
+
+                    </div>
+                    <!-- END MULTIPLE REMINDERS INPUT AREA -->
 
 
-                        <div>
-                            <label for="event-description"
-                                class="block text-sm font-medium text-slate-300 mb-1">Description
-                                (Optional)</label>
-                            <textarea id="event-description" rows="3" class="w-full"></textarea>
-                        </div>
-                        <div>
-                            <label for="event-location" class="block text-sm font-medium text-slate-300 mb-1">Location
-                                (Optional)</label>
-                            <input type="text" id="event-location" class="w-full"
-                                placeholder="e.g., Zoom Link or Office Address">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
-                                fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                            Add Event
-                        </button>
+                    <div>
+                        <label for="event-description" class="block text-sm font-medium text-slate-300 mb-1">Description
+                            (Optional)</label>
+                        <textarea id="event-description" rows="3" class="w-full"></textarea>
+                    </div>
+                    <div>
+                        <label for="event-location" class="block text-sm font-medium text-slate-300 mb-1">Location
+                            (Optional)</label>
+                        <input type="text" id="event-location" class="w-full"
+                            placeholder="e.g., Zoom Link or Office Address">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        Add Event
+                    </button>
                 </form>
             </div>
 
