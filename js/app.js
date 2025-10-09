@@ -315,7 +315,7 @@ function toggleClearModal(show) {
  */
 function handleEventSubmit(e) {
     e.preventDefault();
-
+    
     const name = document.getElementById('event-name').value.trim();
     const location = document.getElementById('event-location').value.trim();
     const datetimeStart = eventDateTimeStart.value;
@@ -331,19 +331,19 @@ function handleEventSubmit(e) {
 
     // NEW LOGIC: If end date is missing, set it equal to the start date for a valid VEVENT block.
     if (!datetimeEnd) {
-        datetimeEnd = datetimeStart;
+        datetimeEnd = datetimeStart; 
     } else if (new Date(datetimeStart) > new Date(datetimeEnd)) {
-        showMessage('The end date/time cannot be before the start date/time.', 'error');
-        return;
+         showMessage('The end date/time cannot be before the start date/time.', 'error');
+         return;
     }
-
+    
     const newId = eventIdCounter++;
 
     const newEvent = {
         id: newId,
         name,
         location,
-        datetimeStart,
+        datetimeStart, 
         datetimeEnd, // Guaranteed to be set here
         timezone,
         reminders: [...currentReminders],
