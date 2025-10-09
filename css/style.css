@@ -1,0 +1,274 @@
+/* -------------------------------------- */
+/* --- CALIBRIDGE CUSTOM DARK STYLES --- */
+/* -------------------------------------- */
+
+/* Define CSS Variables for Color Palette */
+:root {
+    --primary-color: #818cf8; /* Indigo 400 - vibrant on dark */
+    --primary-dark: #6366f1;  /* Indigo 500 - Hover state */
+    --secondary-color: #34d399; /* Emerald 400 - vibrant on dark */
+    --secondary-dark: #10b981; /* Emerald 500 - Hover state */
+    --bg-dark: #0f172a; /* Slate 950 - Deep background */
+    --surface-dark: #1e293b; /* Slate 800 - Card background */
+    --text-light: #f1f5f9; /* Slate 100 - Primary text */
+    --text-medium: #94a3b8; /* Slate 400 - Secondary text */
+    --border-dark: #334155; /* Slate 700 - Border/Dividers */
+}
+
+/* Global Body Styles */
+body {
+    font-family: 'Inter', sans-serif; 
+    background-color: var(--bg-dark); 
+    color: var(--text-light); 
+    display: flex; 
+    flex-direction: column;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+}
+#app {
+    flex-grow: 1; 
+    position: relative; 
+    z-index: 10;
+}
+h1, h2 {
+    font-family: 'Poppins', sans-serif;
+}
+
+/* Card Styling (Forms, List, Controls) */
+.card {
+    background-color: var(--surface-dark); 
+    border-radius: 1.25rem; 
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1); 
+    border: 1px solid var(--border-dark); 
+}
+
+/* Base Button Styles */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem; 
+    font-weight: 600; 
+    color: var(--bg-dark); 
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 48px; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+}
+
+/* Button Press Animation */
+.btn:active {
+    transform: scale(0.98);
+    box-shadow: none; 
+}
+
+/* Primary Button Colors */
+.btn-primary {
+    background-color: var(--primary-color);
+    color: var(--bg-dark);
+}
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(129, 140, 248, 0.4); 
+}
+
+/* Secondary Button Colors */
+.btn-secondary {
+    background-color: var(--secondary-color);
+    color: var(--bg-dark);
+}
+.btn-secondary:hover {
+    background-color: var(--secondary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(52, 211, 153, 0.4);
+}
+
+/* Input/Select/Textarea Base Styles */
+input[type="text"], input[type="datetime-local"], textarea, select { 
+    background-color: #0f172a; 
+    border: 1px solid var(--border-dark); 
+    color: var(--text-light);
+    border-radius: 0.625rem; 
+    padding: 0.625rem 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; 
+    min-height: 48px;
+}
+
+/* Custom Reminder Input Fix */
+#custom-reminder-value, #custom-reminder-unit {
+    min-height: 40px; 
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    background-color: #0f172a; /* Fix for white background issue */
+    border: 1px solid var(--border-dark); 
+    color: var(--text-light);
+}
+
+/* Input Hover/Focus Lift Animation */
+input[type="text"]:focus, input[type="datetime-local"]:focus, textarea:focus, select:focus,
+input[type="text"]:hover, input[type="datetime-local"]:hover, textarea:hover, select:hover,
+#custom-reminder-value:focus, #custom-reminder-unit:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3), 0 2px 8px rgba(0,0,0,0.3); 
+    transform: translateY(-1px);
+    outline: none;
+}
+
+/* Hiding default calendar picker icon and maintaining pointer-events */
+input[type="datetime-local"] {
+    padding-right: 2.5rem !important; 
+}
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+}
+
+/* Event List Item Styles */
+.event-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem; 
+    transition: background-color 0.15s ease-in-out;
+    cursor: default;
+}
+.event-item:hover {
+    background-color: #2b374d; /* Subtle hover color */
+}
+.event-item:not(:last-child) {
+    border-bottom: 1px solid var(--border-dark); 
+}
+
+/* Action Button Styles (Delete/Duplicate) */
+.action-btn {
+    padding: 0.5rem;
+    border-radius: 9999px;
+    transition: background-color 0.2s, transform 0.1s;
+    opacity: 0; /* Hidden by default */
+}
+.event-item:hover .action-btn {
+    opacity: 1; /* Visible on hover */
+}
+.action-btn:hover {
+    transform: translateY(-1px);
+}
+.action-btn:active {
+    transform: scale(0.95);
+}
+.action-btn.duplicate {
+    color: var(--primary-color);
+    background-color: rgba(129, 140, 248, 0.15); 
+}
+.action-btn.duplicate:hover {
+    background-color: rgba(129, 140, 248, 0.25);
+}
+.action-btn.delete {
+    color: #f87171; /* Red 400 */
+    background-color: rgba(248, 113, 113, 0.15); 
+}
+.action-btn.delete:hover {
+    background-color: rgba(248, 113, 113, 0.25);
+}
+
+/* Message Box Animation (fade in and out) */
+.message-box {
+    animation: fadeInOut 5s forwards; 
+}
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(10px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(10px); }
+}
+
+/* Event Entry Animation (slide up) */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.event-enter-active {
+    animation: slideInUp 0.3s ease-out;
+}
+
+/* Feature Banner Styles (Marquee effect) */
+.feature-banner-container {
+    overflow: hidden;
+    width: 100%;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    background-color: var(--surface-dark); 
+    border-top: 1px solid var(--border-dark);
+    border-bottom: 1px solid var(--border-dark);
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.feature-text {
+    white-space: nowrap;
+    display: inline-block;
+    animation: marquee 40s linear infinite;
+    padding-left: 100%; 
+}
+
+.feature-item {
+    color: var(--text-medium);
+    font-size: 0.875rem;
+    padding: 0 1.5rem;
+    display: inline-block;
+    font-weight: 500;
+}
+
+@keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-100%); }
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.3s;
+}
+.modal-content {
+    background-color: var(--surface-dark);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    max-width: 400px;
+    width: 90%;
+    animation: slideInUpModal 0.3s ease-out;
+}
+@keyframes slideInUpModal {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
