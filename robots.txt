@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Reference to the sitemap file
+Sitemap: https://www.google.com/search?q=https://events.lakshp.live/sitemap.xml
