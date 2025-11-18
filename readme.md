@@ -1,9 +1,9 @@
 <!-- ===================================================================== -->
-<!--                     CALENDAR EVENTS — BY LAKSH PRADHWANI              -->
+<!--                           CALIBRIDGE — BY LAKSH                        -->
 <!-- ===================================================================== -->
 
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0D0D0D&height=170&text=Calendar%20Events&fontSize=40&fontColor=FFFFFF&fontAlignY=35" />
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=0B0B0B&height=180&text=CaliBridge%20•%20Event%20Calendar&fontSize=42&fontColor=FFFFFF&fontAlignY=35" />
 </p>
 
 <br>
@@ -17,15 +17,15 @@
 <br>
 
 <!-- ===================================================================== -->
-<!--                           OVERVIEW CARD                                -->
+<!--                            PROJECT OVERVIEW                            -->
 <!-- ===================================================================== -->
 
 <div align="center">
 <table><tr><td>
 
-### 📅 Calendar Events — Simple • Smart • Interactive  
-A clean and responsive **Event Calendar Web App** built using **HTML, CSS, and JavaScript**.  
-It allows users to browse dates, add events, view existing tasks, and manage schedules with a modern UI and smooth interactions.
+### 📅 CaliBridge — Your Daily Schedule, Organized Perfectly  
+CaliBridge is a **modern, responsive, interactive Calendar + Event Manager** created using **HTML, CSS, and JavaScript**.  
+It blends minimal design with powerful features: event creation, daily task tracking, live highlighting, smooth animations, and instant LocalStorage saving — all in a clean and intuitive UI.
 
 </td></tr></table>
 </div>
@@ -42,34 +42,37 @@ It allows users to browse dates, add events, view existing tasks, and manage sch
 
 <td width="33%">
 
-### 🎨 UI & Design  
-- Minimal clean layout  
-- Soft shadows  
-- Modern color palette  
-- Smooth section transitions  
-- Balanced spacing  
+### 🎨 Design & UI  
+- Modern minimal interface  
+- Soft shadows & clean spacing  
+- Smooth page transitions  
+- Adaptive color tones  
+- Subtle hover animations  
+- Mobile-optimized layout  
 
 </td>
 
 <td width="33%">
 
-### 📆 Calendar Engine  
-- Dynamic month switching  
-- Auto-generated dates  
-- Highlights current day  
-- Event mapping  
-- LocalStorage support  
+### 📅 Calendar System  
+- Auto-generated days  
+- Month switching  
+- Current day highlight  
+- Intelligent blank-day spacing  
+- Consistent weekday alignment  
+- Year navigation support (expandable)  
 
 </td>
 
 <td width="33%">
 
-### ⚡ Interactivity  
-- Add / view events  
-- Click-based date selection  
-- Hover animations  
-- Smooth navigation  
-- Mobile-optimized  
+### ⚡ Event Management  
+- Add events instantly  
+- View all events for selected day  
+- Persistent LocalStorage saving  
+- Smart input validation  
+- Instant DOM update  
+- Works offline  
 
 </td>
 
@@ -81,38 +84,75 @@ It allows users to browse dates, add events, view existing tasks, and manage sch
 
 ---
 
-# 🧩 Sections
+# 🧩 Advanced Features
 
-## 📜 Calendar View  
-Shows days of the month with:
+### 🔹 Intelligent Empty-Space Handling  
+CaliBridge calculates how many blank spaces a month needs based on weekday alignment, ensuring a perfect grid every time.
 
-- Current date highlight  
-- Automatic month transitions  
-- Clean grid layout  
-- Quick navigation  
+### 🔹 Auto-Sync Event Rendering  
+Whenever you add an event, the calendar automatically refreshes its UI without reload.
 
-## 📝 Event Manager  
-Includes:
+### 🔹 Daily Event Indicator Badges  
+Dates with events display subtle markers for quick visual distinction.
 
-- Add event popup  
-- Event details viewer  
-- LocalStorage saving  
-- Instant updates on calendar  
+### 🔹 Event Detail Popup  
+Click any date → Opens a clean event card display with:
+
+- Title  
+- Time  
+- Optional description  
+- Color-coded categories (expandable)
+
+### 🔹 Full Keyboard Accessibility  
+Tab navigation, Enter-key selection, smooth focus transitions.
+
+### 🔹 Future-Proof Architecture  
+Designed so you can easily add:
+
+- Notifications  
+- Cloud sync  
+- Event editing & deletion  
+- Multiple calendars  
+- Themes  
+- Week view  
 
 <br>
 
 ---
 
-# 🧱 Project Structure
+# 🧑‍💻 Sections Overview
+
+## 🗓️ Main Calendar View  
+- Dynamically generated  
+- Smooth month navigation  
+- Current date glow  
+
+## 📝 Event Creation Panel  
+Includes:
+
+- Event name  
+- Date auto-fill  
+- Time picker  
+- Optional details  
+- Round animated save button  
+
+## 🗃️ Event List Popup  
+Shows all tasks for a day in a compact card layout with soft hover effects.
+
+<br>
+
+---
+
+# 🔧 Architecture
 
 ```
-Callender-Events/
-│── index.html        -> UI layout + calendar structure
-│── style.css         -> Theme, grid, animations
-│── script.js         -> Calendar logic + event handling
+CaliBridge/
+│── index.html        -> Main calendar UI
+│── style.css         -> Theme, grid, responsive UI, animations
+│── script.js         -> Calendar logic, event system, state manager
 │── assets/
-│    ├── icons/       -> UI icons
-│    └── images/      -> Decorative images (optional)
+│    ├── icons/       -> Interface icons
+│    └── images/      -> Decorative/optional images
 ```
 
 <br>
@@ -129,7 +169,20 @@ Callender-Events/
 
 ---
 
-# 🔧 Installation
+# 🧪 Code Quality Highlights
+
+- Modular, readable structure  
+- Calendar logic split into clean functions  
+- Optimized animations (GPU-friendly)  
+- Zero frameworks — pure JS  
+- LocalStorage used as lightweight database  
+- Fully responsive grid + layout  
+
+<br>
+
+---
+
+# 🚀 Installation
 
 ```bash
 git clone https://github.com/TheRealLaksh/Callender-Events
@@ -152,4 +205,6 @@ cd Callender-Events
 <br>
 
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=wave&color=0D
+  <img src="https://capsule-render.vercel.app/api?type=wave&color=0B0B0B&height=130&section=footer&text=CaliBridge%20•%20Stay%20Organized&fontColor=FFFFFF&fontSize=28" />
+</p>
+
