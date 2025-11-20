@@ -25,6 +25,12 @@ function formatICSDateToISO(icsDate) {
     return icsDate.substring(0, 4) + '-' + icsDate.substring(4, 6) + '-' + icsDate.substring(6, 8) + 'T00:00';
 }
 
+// Fix: Helper to get local ISO string (YYYY-MM-DDTHH:MM) without UTC shift
+function toLocalISOString(date) {
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function parseICS(icsContent) {
     const lines = icsContent.split(/\r\n|\n|\r/).map(line => line.trim());
     const importedEvents = [];
@@ -36,8 +42,10 @@ function parseICS(icsContent) {
         } else if (line.startsWith('END:VEVENT') && currentEvent) {
             if (currentEvent.datetimeStart) {
                 if (!currentEvent.datetimeEnd) {
+                    // Fix: Use Local ISO string to prevent Timezone shift
                     const start = new Date(currentEvent.datetimeStart);
-                    currentEvent.datetimeEnd = new Date(start.getTime() + 3600000).toISOString().substring(0, 16);
+                    const end = new Date(start.getTime() + 3600000); // Add 1 hour
+                    currentEvent.datetimeEnd = toLocalISOString(end);
                 }
                 importedEvents.push(currentEvent);
             }
@@ -95,9 +103,12 @@ export function setupExport() {
 
         state.events.forEach(e => {
             const tzid = e.timezone || 'Asia/Kolkata';
+            // Fix: Escape newlines for valid ICS format
+            const desc = (e.description || '').replace(/\n/g, '\\n');
+            
             lines.push('BEGIN:VEVENT', `UID:${generateUniqueId()}`, `DTSTAMP:${now}`,
                 `DTSTART;${formatICSDateTZ(e.datetimeStart, tzid)}`, `DTEND;${formatICSDateTZ(e.datetimeEnd, tzid)}`,
-                `SUMMARY:${e.name}`, `LOCATION:${e.location || ''}`, `DESCRIPTION:${e.description || ''}`);
+                `SUMMARY:${e.name}`, `LOCATION:${e.location || ''}`, `DESCRIPTION:${desc}`);
             e.reminders.forEach(r => lines.push(createAlarmBlock(r)));
             lines.push('END:VEVENT');
         });

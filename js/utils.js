@@ -1,18 +1,28 @@
 import { durationMap, durationRegex } from './config.js';
 
+let messageTimeout;
+
 export function showMessage(message, type = 'success') {
     const messageBox = document.getElementById('message-box');
     if (!messageBox) return;
+
+    // Clear previous timeout to prevent premature hiding
+    if (messageTimeout) clearTimeout(messageTimeout);
 
     messageBox.textContent = message;
     const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
     messageBox.className = `message-box p-4 rounded-xl text-white font-medium shadow-lg ${bgColor}`;
     messageBox.classList.remove('hidden');
 
-    // Trigger CSS animation restart
+    // Restart animation
     messageBox.style.animation = 'none';
     void messageBox.offsetWidth;
     messageBox.style.animation = null;
+
+    // Fix: Actually hide the element after animation so it doesn't block clicks
+    messageTimeout = setTimeout(() => {
+        messageBox.classList.add('hidden');
+    }, 5000);
 }
 
 export function generateUniqueId() {

@@ -29,6 +29,7 @@ export function renderCalendar() {
         dayEl.classList.add('calendar-day');
         dayEl.textContent = day;
 
+        // Fix: Accurate "Today" check
         if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
             dayEl.classList.add('is-today');
         }
@@ -46,6 +47,8 @@ export function renderCalendar() {
 }
 
 export function changeMonth(offset) {
+    // Fix: Reset to 1st of month to avoid skipping (e.g. Jan 31 -> Feb)
+    state.currentCalendarDate.setDate(1); 
     state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + offset);
     renderCalendar();
 }
