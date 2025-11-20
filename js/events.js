@@ -1,6 +1,6 @@
 import { state, saveToStorage } from './state.js';
-import { showMessage, getReminderDisplayText } from './utils.js';
-import { renderCalendar, renderEventSlots } from './calendar.js'; // Import renderEventSlots
+import { showMessage, getReminderDisplayText, isValidDate } from './utils.js';
+import { renderCalendar, renderEventSlots } from './calendar.js'; 
 
 // --- Reminders Logic ---
 export function renderReminders() {
@@ -57,11 +57,31 @@ export function toggleReminderArea() {
 // --- Event CRUD Actions ---
 
 export function deleteEvent(id) {
-    state.events = state.events.filter(e => e.id !== id);
-    if (state.editingEventId === id) resetFormState();
-    saveToStorage();
-    renderCalendar();
-    showMessage('Event removed.');
+    const ev = state.events.find(e => e.id === id);
+    if (ev) {
+        state.trash.push(ev); // Add to trash
+        state.events = state.events.filter(e => e.id !== id);
+        
+        if (state.editingEventId === id) resetFormState();
+        
+        saveToStorage();
+        renderCalendar(); // Re-renders grid
+        renderEventSlots(); // Re-renders list
+        showMessage(`Event removed. Press Ctrl+Z to undo.`);
+    }
+}
+
+export function undoDelete() {
+    const last = state.trash.pop();
+    if (last) {
+        state.events.push(last);
+        saveToStorage();
+        renderCalendar();
+        renderEventSlots();
+        showMessage('Event restored!', 'success');
+    } else {
+        showMessage('Nothing to undo.', 'error');
+    }
 }
 
 export function duplicateEvent(id) {
@@ -71,6 +91,7 @@ export function duplicateEvent(id) {
     state.events.push({ ...original, id: newId, name: original.name + " (Copy)", reminders: [...original.reminders] });
     saveToStorage();
     renderCalendar();
+    renderEventSlots();
     showMessage('Event duplicated.');
 }
 
@@ -80,7 +101,7 @@ export function editEvent(id) {
 
     document.getElementById('event-name').value = ev.name;
     document.getElementById('event-location').value = ev.location || '';
-    // Flatpickr will automatically detect the value change on the input
+    
     const startPicker = document.getElementById('event-datetime-start')._flatpickr;
     const endPicker = document.getElementById('event-datetime-end')._flatpickr;
     
@@ -104,7 +125,6 @@ function resetFormState() {
     state.editingEventId = null;
     document.getElementById('event-form').reset();
     
-    // Clear Flatpickr inputs visually
     const startPicker = document.getElementById('event-datetime-start')._flatpickr;
     const endPicker = document.getElementById('event-datetime-end')._flatpickr;
     if(startPicker) startPicker.clear();
@@ -122,7 +142,6 @@ export function handleEventSubmit(e) {
     const start = document.getElementById('event-datetime-start').value;
     let end = document.getElementById('event-datetime-end').value;
 
-    // JS Validation replaces HTML 'required' attribute to avoid conflicts
     if (!name || !start) { 
         showMessage('Name and Start Time required.', 'error'); 
         return; 
@@ -151,30 +170,25 @@ export function handleEventSubmit(e) {
         state.events.push({ id: newId, ...eventData });
         showMessage('Event added.');
         
-        // FIX: Switch calendar view to the new event's date immediately
         const newEventDate = new Date(start);
         state.selectedDate = newEventDate;
-        state.currentCalendarDate = new Date(newEventDate); // Copy to avoid ref issues
+        state.currentCalendarDate = new Date(newEventDate);
         
-        document.getElementById('event-form').reset();
-        const startPicker = document.getElementById('event-datetime-start')._flatpickr;
-        const endPicker = document.getElementById('event-datetime-end')._flatpickr;
-        if(startPicker) startPicker.clear();
-        if(endPicker) endPicker.clear();
-
-        state.currentReminders = [];
-        renderReminders();
+        resetFormState();
     }
 
     saveToStorage();
-    renderCalendar(); // This re-renders the grid
-    renderEventSlots(); // This ensures the list below the grid updates to show the new event
+    renderCalendar(); 
+    renderEventSlots(); 
 }
 
 export function toggleClearModal(show) {
     const modal = document.getElementById('confirm-clear-modal');
     if (!modal) return;
-    if (show && state.events.length === 0) return showMessage('List is already empty.', 'error');
+    if (show && state.events.length === 0) {
+        showMessage('List is already empty.', 'error');
+        return;
+    }
 
     document.getElementById('events-to-clear-count').textContent = state.events.length;
     modal.classList.toggle(show ? 'flex' : 'hidden', show);
@@ -184,8 +198,10 @@ export function toggleClearModal(show) {
 export function executeClearAll() {
     const count = state.events.length;
     state.events = [];
+    state.trash = []; 
     resetFormState();
     renderCalendar();
+    renderEventSlots(); // Added this to clear the list view too
     toggleClearModal(false);
     saveToStorage();
     showMessage(`Cleared ${count} events.`);
@@ -201,7 +217,8 @@ setInterval(() => {
     
     state.events.forEach(event => {
         const start = new Date(event.datetimeStart);
-        
+        if (!isValidDate(start)) return; // Skip invalid dates
+
         event.reminders.forEach(reminder => {
             let triggerTime = new Date(start);
             
@@ -228,45 +245,47 @@ setInterval(() => {
     
     lastCheckTime = now; 
 }, 10000);
+
+// #7 Natural Language Parsing
 export function parseNaturalLanguage(input) {
     const now = new Date();
-    // Regex for "Event at HH:MM"
+    // Basic Regex for "EventName at HH:MM" or "at HH:MM EventName"
+    // Example: "Meeting at 14:30"
     const timeMatch = input.match(/at (\d{1,2})(:(\d{2}))?\s*(am|pm)?/i);
+    
     if (timeMatch) {
-        // Logic to set time on current date
-        // This would populate the form fields automatically
+        let hours = parseInt(timeMatch[1]);
+        const minutes = timeMatch[3] ? parseInt(timeMatch[3]) : 0;
+        const meridiem = timeMatch[4] ? timeMatch[4].toLowerCase() : null;
+
+        if (meridiem === 'pm' && hours < 12) hours += 12;
+        if (meridiem === 'am' && hours === 12) hours = 0;
+
+        // Set the time on the selected date
+        const targetDate = new Date(state.selectedDate);
+        targetDate.setHours(hours, minutes, 0, 0);
+
+        // Populate Form
+        const name = input.replace(timeMatch[0], '').trim();
+        document.getElementById('event-name').value = name || "New Event";
+        
+        const fpStart = document.getElementById('event-datetime-start')._flatpickr;
+        const fpEnd = document.getElementById('event-datetime-end')._flatpickr;
+        
+        if (fpStart) fpStart.setDate(targetDate);
+        
+        // Default 1 hour duration
+        const endDate = new Date(targetDate);
+        endDate.setHours(hours + 1);
+        if (fpEnd) fpEnd.setDate(endDate);
+
+        showMessage("Time detected from input!", "success");
     }
 }
+import { syncEventToGoogle } from "./googleCalendarSync.js";
 
-// #20 Trash / Undo
-export function deleteEvent(id) {
-    const ev = state.events.find(e => e.id === id);
-    if (ev) {
-        state.trash.push(ev); // Save to trash
-        state.events = state.events.filter(e => e.id !== id);
-        saveToStorage();
-        renderCalendar();
-        showMessage(`Event deleted. Press Ctrl+Z to undo.`, 'success');
+document.getElementById("sync-google").onclick = () => {
+    if (state.editingEventId) {
+        syncEventToGoogle(state.editingEventId);
     }
-}
-
-export function undoDelete() {
-    const last = state.trash.pop();
-    if (last) {
-        state.events.push(last);
-        saveToStorage();
-        renderCalendar();
-        showMessage('Event restored!', 'success');
-    }
-}
-
-// #21 Data Backup (JSON)
-export function exportJSON() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.events));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "calibridge_backup.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-}
+};

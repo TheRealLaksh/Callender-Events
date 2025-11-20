@@ -16,6 +16,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
 
+    <script src="js/googleAuth.js"></script>
+    <script>
+        window.onload = () => {
+            initGoogleSignIn();
+        };
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -201,6 +208,7 @@
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                 </div>
+                <div id="google-login"></div>
 
                 <div class="flex gap-2 bg-slate-900/50 p-1 rounded-xl border border-slate-700">
                     <button onclick="changeView('month')"
@@ -372,6 +380,18 @@
                             </svg> Add Event
                         </button>
                     </form>
+                    <button id="sync-google"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition-shadow shadow-lg">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg> Sync to Google
+                    </button>
+                    <button id="import-google"
+                        class="ml-3 inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/5 text-sm text-slate-200 border border-white/6 hover:bg-white/6 transition">
+                        Import from Google
+                    </button>
+
+
                 </div>
             </section>
 
@@ -550,6 +570,7 @@
 
     </div>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script type="module" src="js/main.js"></script>
 </body>

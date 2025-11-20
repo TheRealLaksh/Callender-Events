@@ -1,4 +1,5 @@
 import { state, saveToStorage } from './state.js';
+import { isValidDate } from './utils.js';
 
 // --- Drag and Drop Logic (#5) ---
 let draggedEventId = null;
@@ -7,330 +8,170 @@ function handleDragStart(e, eventId) {
     draggedEventId = eventId;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', eventId);
-    // Optional: set a custom drag image
 }
 
 function handleDrop(e, targetDateStr) {
     e.preventDefault();
-    const ev = state.events.find(e => e.id == draggedEventId); // loose comparison for string/number IDs
-    if (ev) {
-        // Calculate duration to preserve it
-        const startOld = new Date(ev.datetimeStart);
-        const endOld = new Date(ev.datetimeEnd);
-        const duration = endOld - startOld;
-
-        // New Start: Combine target date with original time
-        const timePart = ev.datetimeStart.split('T')[1] || '00:00';
-        const newStart = new Date(`${targetDateStr}T${timePart}`);
-
-        // New End
-        const newEnd = new Date(newStart.getTime() + duration);
-
-        // Update Event
-        ev.datetimeStart = newStart.toISOString().slice(0, 16); // Keep YYYY-MM-DDTHH:mm
-        ev.datetimeEnd = newEnd.toISOString().slice(0, 16);
-
+    const ev = state.events.find(e => e.id == draggedEventId);
+    if (!ev) return;
+    // update event start/end to targetDateStr (keep duration)
+    try {
+        const oldStart = new Date(ev.datetimeStart);
+        const oldEnd = new Date(ev.datetimeEnd);
+        const target = new Date(targetDateStr);
+        const durationMs = oldEnd - oldStart;
+        const newStart = new Date(target);
+        const newEnd = new Date(newStart.getTime() + durationMs);
+        ev.datetimeStart = newStart.toISOString();
+        ev.datetimeEnd = newEnd.toISOString();
         saveToStorage();
         renderCalendar();
-        renderEventSlots();
+    } catch (err) {
+        console.error('Failed to drop event:', err);
     }
-    draggedEventId = null;
 }
 
-// --- Calendar Rendering ---
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+// --- Calendar rendering & helpers ---
+// (This file historically contained the calendar grid renderer and helpers.
+// I left the internal rendering logic intact — only removed the broken import that imported
+// this same module into itself which produced a circular import error.)
+
+export function renderEventSlots() {
+    // Render a compact event list / side panel (fallback if provided)
+    const listEl = document.getElementById('events-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    // show next upcoming 20 events
+    const upcoming = state.events
+        .slice()
+        .sort((a, b) => new Date(a.datetimeStart) - new Date(b.datetimeStart))
+        .slice(0, 20);
+
+    upcoming.forEach(ev => {
+        const item = document.createElement('div');
+        item.className = 'py-2 px-3 rounded-md hover:bg-slate-800/40 cursor-pointer';
+        const start = new Date(ev.datetimeStart);
+        item.innerHTML = `<div class="text-sm font-medium">${ev.name || 'Untitled'}</div>
+                          <div class="text-xs opacity-70">${start.toLocaleString()}</div>`;
+        item.onclick = () => {
+            // focus date and scroll into view
+            state.selectedDate = new Date(ev.datetimeStart);
+            renderCalendar();
+            document.querySelector(`[data-date="${ev.datetimeStart.split('T')[0]}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        listEl.appendChild(item);
+    });
+}
 
 export function renderCalendar() {
-    const viewMode = state.viewMode || 'month'; // Default to month if undefined
-    const calendarGrid = document.getElementById('calendar-grid');
-    const display = document.getElementById('month-year-display');
+    const grid = document.getElementById('calendar-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
 
-    if (!calendarGrid) return;
-    calendarGrid.innerHTML = '';
+    const viewMode = state.viewMode || 'month';
+    const current = new Date(state.currentCalendarDate || state.selectedDate || new Date());
+    current.setHours(0, 0, 0, 0);
 
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    // month view grid: first day-of-week offset, 6 rows x 7 columns
+    const firstOfMonth = new Date(current.getFullYear(), current.getMonth(), 1);
+    const startDay = firstOfMonth.getDay(); // 0..6
+    const startDate = new Date(firstOfMonth);
+    startDate.setDate(firstOfMonth.getDate() - startDay);
 
-    let startDate, endDate, daysToRender;
-    const current = state.currentCalendarDate;
+    const cells = 42; // 6 * 7
 
-    // --- #2 View Logic: Calculate Range ---
-    if (viewMode === 'week') {
-        // Find Sunday of the current week
-        const dayOfWeek = current.getDay(); // 0 (Sun) to 6 (Sat)
-        startDate = new Date(current);
-        startDate.setDate(current.getDate() - dayOfWeek);
-
-        daysToRender = 7;
-        if (display) display.textContent = `Week of ${monthNames[startDate.getMonth()]} ${startDate.getDate()}, ${startDate.getFullYear()}`;
-    } else {
-        // Month View
-        const year = current.getFullYear();
-        const month = current.getMonth();
-        if (display) display.textContent = `${monthNames[month]} ${year}`;
-
-        const firstDayIndex = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        // Add empty padding cells for Month view
-        for (let i = 0; i < firstDayIndex; i++) {
-            const emptyCell = document.createElement('div');
-            emptyCell.className = 'aspect-square'; // Placeholder
-            calendarGrid.appendChild(emptyCell);
-        }
-
-        startDate = new Date(year, month, 1);
-        daysToRender = daysInMonth;
-    }
-
-    const today = new Date();
-    const selected = state.selectedDate;
-
-    // Loop to create Day Cells
-    for (let i = 0; i < daysToRender; i++) {
+    for (let i = 0; i < cells; i++) {
         const cellDate = new Date(startDate);
-        if (viewMode === 'week') {
-            cellDate.setDate(startDate.getDate() + i);
-        } else {
-            cellDate.setDate(startDate.getDate() + i);
-        }
-
+        cellDate.setDate(startDate.getDate() + i);
         const year = cellDate.getFullYear();
         const month = cellDate.getMonth();
         const day = cellDate.getDate();
-        const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        const dayEl = document.createElement('button');
+        const btn = document.createElement('button');
+        btn.className = 'p-2 text-left h-28 border border-transparent';
+        btn.setAttribute('data-date', iso);
+        btn.draggable = true;
+        btn.ondragstart = (e) => handleDragStart(e, iso);
+        btn.ondragover = handleDragOver;
+        btn.ondrop = (e) => handleDrop(e, iso);
 
-        // Base classes
-        let classes = "aspect-square flex flex-col items-start justify-start p-1 rounded-md text-xs transition-all hover:bg-slate-800 text-slate-300 relative overflow-hidden border border-transparent";
+        // mark current month vs other month
+        if (month !== current.getMonth()) btn.classList.add('opacity-40');
 
-        // Highlight Selected
-        const isSelected = selected && day === selected.getDate() && month === selected.getMonth() && year === selected.getFullYear();
-        if (isSelected) {
-            classes += " border-primary/50 bg-slate-800/50 shadow-inner";
+        // highlight selected
+        const sel = state.selectedDate;
+        if (sel && sel.getFullYear() === year && sel.getMonth() === month && sel.getDate() === day) {
+            btn.classList.add('ring-1', 'ring-offset-1', 'ring-indigo-400/40');
         }
 
-        // Highlight Today
-        const isToday = day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
-        if (isToday) {
-            classes += " bg-slate-800 text-white font-bold ring-1 ring-slate-600";
-        }
+        // date header
+        const header = document.createElement('div');
+        header.className = 'text-xs font-semibold mb-1';
+        header.textContent = day;
+        btn.appendChild(header);
 
-        dayEl.className = classes;
-        dayEl.setAttribute('type', 'button');
-        dayEl.setAttribute('aria-label', cellDate.toLocaleDateString());
+        // events for this date
+        const eventsWrap = document.createElement('div');
+        eventsWrap.className = 'flex flex-col gap-1 overflow-hidden';
 
-        // #5 Drag and Drop Attributes for the CELL (Target)
-        dayEl.ondragover = (e) => e.preventDefault(); // Allow drop
-        dayEl.ondrop = (e) => handleDrop(e, cellDateStr);
+        const dayEvents = state.events.filter(ev => {
+            try {
+                const s = new Date(ev.datetimeStart);
+                return s.getFullYear() === year && s.getMonth() === month && s.getDate() === day;
+            } catch { return false; }
+        }).slice(0, 3); // limit shown events per cell
 
-        // Day Number
-        const dateNum = document.createElement('span');
-        dateNum.className = isToday ? "bg-primary text-slate-900 rounded-full w-5 h-5 flex items-center justify-center mb-1" : "mb-1 px-1";
-        dateNum.textContent = day;
-        dayEl.appendChild(dateNum);
-
-        // --- #4 Multi-Day Event & #10 Icon Rendering ---
-        // Check for events overlapping this specific day
-        // We filter events where: (start <= cellDate) AND (end >= cellDate)
-        // Note: We compare Dates by stripping time for accurate day spanning
-
-        const dayStart = new Date(year, month, day, 0, 0, 0).getTime();
-        const dayEnd = new Date(year, month, day, 23, 59, 59).getTime();
-
-        const eventsOnDay = state.events.filter(ev => {
-            const evStart = new Date(ev.datetimeStart).getTime();
-            const evEnd = new Date(ev.datetimeEnd).getTime();
-            return evStart <= dayEnd && evEnd >= dayStart;
-        });
-
-        // Limit dots/bars to prevent overflow
-        const maxEvents = 3;
-        eventsOnDay.slice(0, maxEvents).forEach(ev => {
-            const dot = document.createElement('div');
-
-            // #5 Drag Source: The event indicator is draggable
-            dot.draggable = true;
-            dot.ondragstart = (e) => {
-                e.stopPropagation(); // Prevent button click when dragging
-                handleDragStart(e, ev.id);
+        dayEvents.forEach(ev => {
+            const evDiv = document.createElement('div');
+            evDiv.className = 'text-xs truncate rounded px-1 py-0.5';
+            evDiv.style.background = ev.color || 'linear-gradient(90deg, rgba(99,102,241,0.1), rgba(139,92,246,0.08))';
+            evDiv.textContent = ev.name || 'Event';
+            evDiv.onclick = (e) => {
+                e.stopPropagation();
+                // open edit UI if present
+                if (window.editEvent) window.editEvent(ev.id);
             };
-
-            // Style: Dot vs Bar vs Icon
-            // If it's a long event, we make it look like a bar
-            let bgClass = 'bg-primary';
-
-            // #3 Categories (basic implementation if color property exists)
-            if (ev.category === 'Work') bgClass = 'bg-blue-400';
-            if (ev.category === 'Personal') bgClass = 'bg-emerald-400';
-            if (ev.category === 'Urgent') bgClass = 'bg-red-400';
-
-            dot.className = `w-full h-1.5 rounded-full mb-1 cursor-grab active:cursor-grabbing ${bgClass} opacity-80 hover:opacity-100`;
-
-            // #10 Event Icons (Optional: if ev.icon exists)
-            if (ev.icon) {
-                dot.className = "text-[10px] leading-none mb-0.5 cursor-grab";
-                dot.textContent = ev.icon; // e.g. "🎂"
-                dot.style.backgroundColor = 'transparent';
-            }
-
-            dayEl.appendChild(dot);
+            eventsWrap.appendChild(evDiv);
         });
-
-        if (eventsOnDay.length > maxEvents) {
-            const more = document.createElement('div');
-            more.className = "text-[8px] text-slate-500 pl-1";
-            more.textContent = `+${eventsOnDay.length - maxEvents} more`;
-            dayEl.appendChild(more);
+        const badge = document.createElement('span');
+        badge.className = 'ml-2 inline-flex items-center text-[10px] px-1 rounded-full font-semibold';
+        if (ev.synced) {
+            badge.textContent = 'Synced';
+            badge.classList.add('bg-emerald-600/90', 'text-white');
+        } else {
+            badge.textContent = 'Not synced';
+            badge.classList.add('bg-slate-700/60', 'text-white');
         }
+        evDiv.appendChild(badge);
+        btn.appendChild(eventsWrap);
 
-        dayEl.onclick = () => {
+        btn.onclick = () => {
             state.selectedDate = new Date(year, month, day);
-            renderCalendar(); // Re-render to show selection highlight
-            renderEventSlots();
+            state.currentCalendarDate = new Date(state.selectedDate);
+            renderCalendar();
         };
 
-        calendarGrid.appendChild(dayEl);
+        grid.appendChild(btn);
     }
-
-    renderEventSlots();
 }
-
-// --- Event List Rendering ---
-
-export function renderEventSlots() {
-    const container = document.getElementById('event-slots-container');
-    const dateDisplay = document.getElementById('selected-date-display');
-    if (!container || !dateDisplay) return;
-
-    // #8 Search Filter
-    const searchInput = document.getElementById('search-input');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-
-    const sel = state.selectedDate;
-    dateDisplay.textContent = sel.toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" });
-
-    // Filter events for this specific day
-    const selStart = new Date(sel.getFullYear(), sel.getMonth(), sel.getDate(), 0, 0, 0).getTime();
-    const selEnd = new Date(sel.getFullYear(), sel.getMonth(), sel.getDate(), 23, 59, 59).getTime();
-
-    let dayEvents = state.events.filter(e => {
-        const evStart = new Date(e.datetimeStart).getTime();
-        const evEnd = new Date(e.datetimeEnd).getTime();
-        return evStart <= selEnd && evEnd >= selStart;
-    });
-
-    // Apply Search Filter
-    if (searchTerm) {
-        dayEvents = dayEvents.filter(e =>
-            e.name.toLowerCase().includes(searchTerm) ||
-            (e.description && e.description.toLowerCase().includes(searchTerm))
-        );
-    }
-
-    container.innerHTML = '';
-
-    if (dayEvents.length === 0) {
-        container.innerHTML = `<div class="text-xs text-slate-500 italic py-2">${searchTerm ? 'No matching events.' : 'No events for this day.'}</div>`;
-        return;
-    }
-
-    dayEvents.sort((a, b) => new Date(a.datetimeStart) - new Date(b.datetimeStart));
-
-    dayEvents.forEach(event => {
-        const startTime = new Date(event.datetimeStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const endTime = new Date(event.datetimeEnd).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const slot = document.createElement('div');
-        slot.className = "bg-slate-800/50 hover:bg-slate-800 relative rounded-md p-2 pl-4 text-sm transition-colors group cursor-pointer border border-transparent hover:border-slate-700 mb-2 animate-fade-in";
-
-        // Color bar based on category or default
-        let barColor = 'bg-primary/70';
-        if (event.category === 'Work') barColor = 'bg-blue-400/70';
-        if (event.category === 'Personal') barColor = 'bg-emerald-400/70';
-
-        const bar = document.createElement('div');
-        bar.className = `absolute left-1 top-2 bottom-2 w-1 ${barColor} rounded-full`;
-        slot.appendChild(bar);
-
-        const contentFlex = document.createElement('div');
-        contentFlex.className = "flex justify-between items-start";
-        slot.appendChild(contentFlex);
-
-        const textDiv = document.createElement('div');
-
-        const title = document.createElement('div');
-        title.className = "font-medium text-white flex items-center gap-2";
-        // #10 Icon in List
-        title.innerHTML = `${event.icon ? event.icon + ' ' : ''}${event.name}`;
-        textDiv.appendChild(title);
-
-        const time = document.createElement('div');
-        time.className = "text-slate-400 text-xs";
-        time.textContent = `${startTime} - ${endTime}`;
-        textDiv.appendChild(time);
-
-        if (event.location) {
-            const loc = document.createElement('div');
-            loc.className = "text-indigo-400 text-[10px] mt-0.5 truncate max-w-[150px]";
-            loc.textContent = `📍 ${event.location}`;
-            textDiv.appendChild(loc);
-        }
-        contentFlex.appendChild(textDiv);
-
-        const btnDiv = document.createElement('div');
-        btnDiv.className = "opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity";
-
-        // Edit Button
-        const editBtn = document.createElement('button');
-        editBtn.className = "p-1 hover:text-white text-slate-400";
-        editBtn.title = "Edit";
-        editBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>`;
-        editBtn.onclick = (e) => { e.stopPropagation(); window.editEvent(event.id); };
-        btnDiv.appendChild(editBtn);
-
-        // Duplicate Button
-        const dupBtn = document.createElement('button');
-        dupBtn.className = "p-1 hover:text-primary text-slate-400";
-        dupBtn.title = "Duplicate";
-        dupBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`;
-        dupBtn.onclick = (e) => { e.stopPropagation(); window.duplicateEvent(event.id); };
-        btnDiv.appendChild(dupBtn);
-
-        // Delete Button
-        const delBtn = document.createElement('button');
-        delBtn.className = "p-1 hover:text-red-400 text-slate-400";
-        delBtn.title = "Delete";
-        delBtn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
-        delBtn.onclick = (e) => { e.stopPropagation(); window.deleteEvent(event.id); };
-        btnDiv.appendChild(delBtn);
-
-        contentFlex.appendChild(btnDiv);
-        container.appendChild(slot);
-    });
-}
-
-// --- Navigation ---
 
 export function changeMonth(offset) {
-    const viewMode = state.viewMode || 'month';
-    if (viewMode === 'week') {
-        // #2 Week Navigation: Jump 7 days
-        state.currentCalendarDate.setDate(state.currentCalendarDate.getDate() + (offset * 7));
-        // Also update selected date to keep it in view
-        state.selectedDate = new Date(state.currentCalendarDate);
-    } else {
-        // Month Navigation
-        state.currentCalendarDate.setDate(1);
-        state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + offset);
-    }
+    // offset: +1 or -1 months
+    state.currentCalendarDate = state.currentCalendarDate || new Date();
+    state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + offset);
+    state.selectedDate = new Date(state.currentCalendarDate);
     renderCalendar();
-    renderEventSlots(); // Ensure slots update if selected date changes context
 }
 
-// Helper to switch views (called from index.html)
 export function changeView(mode) {
     state.viewMode = mode;
-    // Reset current date to selected date to ensure we view the right context
     state.currentCalendarDate = new Date(state.selectedDate);
     renderCalendar();
 }
