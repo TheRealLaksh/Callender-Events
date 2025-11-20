@@ -315,3 +315,30 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     background-color: transparent;
     cursor: default;
 }
+/* Accessibility: Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .animate-fade-in, .animate-fade-in-delay, .message-box, .event-enter-active, .modal-content {
+        animation: none !important;
+        transition: none !important;
+    }
+    .feature-text {
+        animation: none;
+        padding-left: 0;
+        white-space: normal;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        justify-content: center;
+    }
+}
+
+/* Accessibility: Show Actions on Focus (Keyboard users) */
+.event-item:focus-within .action-btn {
+    opacity: 1;
+}
+
+/* Better Focus Ring */
+*:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}

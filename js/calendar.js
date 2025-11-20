@@ -20,6 +20,7 @@ export function renderCalendar() {
     for (let i = 0; i < firstDayIndex; i++) {
         const emptyCell = document.createElement('div');
         emptyCell.classList.add('calendar-day', 'empty');
+        emptyCell.setAttribute('aria-hidden', 'true');
         calendarGrid.appendChild(emptyCell);
     }
 
@@ -28,10 +29,15 @@ export function renderCalendar() {
         const dayEl = document.createElement('div');
         dayEl.classList.add('calendar-day');
         dayEl.textContent = day;
+        
+        // Accessibility: Make focusable
+        dayEl.setAttribute('tabindex', '0');
+        dayEl.setAttribute('role', 'gridcell');
+        dayEl.setAttribute('aria-label', `${monthNames[month]} ${day}`);
 
-        // Fix: Accurate "Today" check
         if (day === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
             dayEl.classList.add('is-today');
+            dayEl.setAttribute('aria-current', 'date');
         }
 
         const cellDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -41,13 +47,13 @@ export function renderCalendar() {
             const dot = document.createElement('div');
             dot.classList.add('event-indicator');
             dayEl.appendChild(dot);
+            dayEl.setAttribute('aria-label', `${monthNames[month]} ${day}, has events`);
         }
         calendarGrid.appendChild(dayEl);
     }
 }
 
 export function changeMonth(offset) {
-    // Fix: Reset to 1st of month to avoid skipping (e.g. Jan 31 -> Feb)
     state.currentCalendarDate.setDate(1); 
     state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + offset);
     renderCalendar();

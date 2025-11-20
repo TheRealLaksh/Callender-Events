@@ -217,3 +217,40 @@ export function executeClearAll() {
     saveToStorage();
     showMessage(`Cleared ${count} events.`);
 }
+setInterval(() => {
+    if (Notification.permission !== 'granted') return;
+    
+    const now = new Date();
+    state.events.forEach(event => {
+        const start = new Date(event.datetimeStart);
+        
+        event.reminders.forEach(reminder => {
+            let triggerTime = new Date(start);
+            // Parse duration (Simple logic for common types)
+            if (reminder.includes('PT')) {
+                const match = reminder.match(/PT(\d+)([MH])/);
+                if (match) {
+                    const val = parseInt(match[1]);
+                    if (match[2] === 'M') triggerTime.setMinutes(start.getMinutes() - val);
+                    if (match[2] === 'H') triggerTime.setHours(start.getHours() - val);
+                }
+            } else if (reminder.includes('P')) {
+                const match = reminder.match(/P(\d+)D/);
+                if (match) triggerTime.setDate(start.getDate() - parseInt(match[1]));
+            }
+
+            // Check if reminder is within this exact minute
+            if (now.getFullYear() === triggerTime.getFullYear() &&
+                now.getMonth() === triggerTime.getMonth() &&
+                now.getDate() === triggerTime.getDate() &&
+                now.getHours() === triggerTime.getHours() &&
+                now.getMinutes() === triggerTime.getMinutes()) {
+                
+                new Notification(`Upcoming Event: ${event.name}`, {
+                    body: `Starting at ${start.toLocaleTimeString()}`,
+                    icon: 'assets/favicon.jpg'
+                });
+            }
+        });
+    });
+}, 60000);

@@ -25,14 +25,13 @@ function formatICSDateToISO(icsDate) {
     return icsDate.substring(0, 4) + '-' + icsDate.substring(4, 6) + '-' + icsDate.substring(6, 8) + 'T00:00';
 }
 
-// Fix: Helper to get local ISO string (YYYY-MM-DDTHH:MM) without UTC shift
-function toLocalISOString(date) {
-    const pad = (num) => String(num).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+// Fix: Handle RFC 5545 Line Folding (CRLF + Space)
+function unfoldICSLines(content) {
+    return content.replace(/\r\n /g, '').replace(/\n /g, '').split(/\r\n|\n|\r/);
 }
 
 function parseICS(icsContent) {
-    const lines = icsContent.split(/\r\n|\n|\r/).map(line => line.trim());
+    const lines = unfoldICSLines(icsContent).map(line => line.trim());
     const importedEvents = [];
     let currentEvent = null;
 
@@ -42,26 +41,30 @@ function parseICS(icsContent) {
         } else if (line.startsWith('END:VEVENT') && currentEvent) {
             if (currentEvent.datetimeStart) {
                 if (!currentEvent.datetimeEnd) {
-                    // Fix: Use Local ISO string to prevent Timezone shift
                     const start = new Date(currentEvent.datetimeStart);
-                    const end = new Date(start.getTime() + 3600000); // Add 1 hour
-                    currentEvent.datetimeEnd = toLocalISOString(end);
+                    const end = new Date(start.getTime() + 3600000);
+                    currentEvent.datetimeEnd = end.toISOString().substring(0, 16);
                 }
                 importedEvents.push(currentEvent);
             }
             currentEvent = null;
         } else if (currentEvent) {
-            const [key, ...rest] = line.split(':');
-            const value = rest.join(':');
-            if (key.startsWith('SUMMARY')) currentEvent.name = value.replace(/\\n/g, '\n');
-            else if (key.startsWith('DESCRIPTION')) currentEvent.description = value.replace(/\\n/g, '\n');
-            else if (key.startsWith('LOCATION')) currentEvent.location = value.replace(/\\n/g, '\n');
-            else if (key.startsWith('DTSTART')) {
-                const tzid = key.match(/TZID=([^;,\r\n]+)/);
+            // Fix: Correctly split Key and Value (handle colons in Description/Summary)
+            const firstColonIndex = line.indexOf(':');
+            if (firstColonIndex === -1) return;
+            
+            const keyPart = line.substring(0, firstColonIndex);
+            const value = line.substring(firstColonIndex + 1);
+            
+            if (keyPart.startsWith('SUMMARY')) currentEvent.name = value.replace(/\\n/g, '\n');
+            else if (keyPart.startsWith('DESCRIPTION')) currentEvent.description = value.replace(/\\n/g, '\n');
+            else if (keyPart.startsWith('LOCATION')) currentEvent.location = value.replace(/\\n/g, '\n');
+            else if (keyPart.startsWith('DTSTART')) {
+                const tzid = keyPart.match(/TZID=([^;,\r\n]+)/);
                 if (tzid) currentEvent.timezone = tzid[1];
                 const val = value.match(/(\d{8}T\d{6}|\d{8})/);
                 if (val) currentEvent.datetimeStart = formatICSDateToISO(val[0]);
-            } else if (key.startsWith('DTEND')) {
+            } else if (keyPart.startsWith('DTEND')) {
                  const val = value.match(/(\d{8}T\d{6}|\d{8})/);
                  if (val) currentEvent.datetimeEnd = formatICSDateToISO(val[0]);
             } else if (line.startsWith('TRIGGER')) {
@@ -84,7 +87,10 @@ export function importICS(event) {
             imported.forEach(ev => { state.events.push({ ...ev, id: state.eventIdCounter++ }); });
             saveToStorage(); renderEvents(); renderCalendar();
             showMessage(`Imported ${imported.length} events!`, 'success');
-        } catch (error) { showMessage('Failed to parse file.', 'error'); }
+        } catch (error) { 
+            console.error(error);
+            showMessage('Failed to parse file.', 'error'); 
+        }
         event.target.value = '';
     };
     reader.readAsText(file);
@@ -103,7 +109,6 @@ export function setupExport() {
 
         state.events.forEach(e => {
             const tzid = e.timezone || 'Asia/Kolkata';
-            // Fix: Escape newlines for valid ICS format
             const desc = (e.description || '').replace(/\n/g, '\\n');
             
             lines.push('BEGIN:VEVENT', `UID:${generateUniqueId()}`, `DTSTAMP:${now}`,

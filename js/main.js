@@ -40,3 +40,13 @@ window.removeReminder = removeReminder;
 window.toggleReminderArea = toggleReminderArea;
 window.importICS = importICS;
 window.toggleClearModal = toggleClearModal;
+if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+    }
+
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(() => console.log('Service Worker Registered'))
+            .catch(err => console.error('SW Fail:', err));
+    }
