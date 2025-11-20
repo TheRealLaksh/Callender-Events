@@ -6,17 +6,18 @@ import { renderCalendar } from './calendar.js';
 export function renderReminders() {
     const el = document.getElementById('reminders-list');
     if (!el) return;
-    
-    // Secure rendering
+
     el.innerHTML = '';
     state.currentReminders.forEach((duration, index) => {
         const span = document.createElement('span');
-        span.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-xs font-medium';
+        // Tailwind Badge Style
+        span.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-semibold';
         span.innerHTML = `
-            ${getReminderDisplayText(duration)} Before
-            <button type="button" class="ml-1 text-emerald-300 hover:text-white" data-index="${index}">×</button>
+            ${getReminderDisplayText(duration)}
+            <button type="button" class="ml-1 hover:text-white transition-colors focus:outline-none" data-index="${index}">
+                &times;
+            </button>
         `;
-        // Add listener programmatically
         span.querySelector('button').onclick = () => removeReminder(index);
         el.appendChild(span);
     });
@@ -25,6 +26,7 @@ export function renderReminders() {
     if (state.currentReminders.length > 0 && area) area.classList.add('hidden');
 }
 
+// ... (Keep addReminderToForm, addCustomReminder, removeReminder, toggleReminderArea as they are in your current logic) ...
 export function addReminderToForm(duration) {
     if (!state.currentReminders.includes(duration)) {
         state.currentReminders.push(duration);
@@ -36,13 +38,12 @@ export function addReminderToForm(duration) {
 export function addCustomReminder() {
     const input = document.getElementById('custom-reminder-value');
     const unit = document.getElementById('custom-reminder-unit').value;
-    const val = parseInt(input.value); // Fix: Ensure integer
-
+    const val = parseInt(input.value);
     if (val > 0) {
         addReminderToForm(unit === 'D' ? `-P${val}D` : `-PT${val}${unit}`);
         input.value = '';
     } else {
-        showMessage('Please enter a valid positive number.', 'error');
+        showMessage('Please enter a valid number.', 'error');
     }
 }
 
@@ -55,6 +56,7 @@ export function toggleReminderArea() {
     document.getElementById('reminder-selection-area')?.classList.toggle('hidden');
 }
 
+
 // --- Events ---
 export function renderEvents(newItemId = null) {
     const list = document.getElementById('event-list');
@@ -62,45 +64,60 @@ export function renderEvents(newItemId = null) {
     const empty = document.getElementById('empty-state');
 
     if (state.events.length === 0) {
-        list.innerHTML = ''; 
-        empty?.classList.remove('hidden'); 
-        if(count) count.textContent = '0';
+        list.innerHTML = '';
+        empty?.classList.remove('hidden');
+        if (count) count.textContent = '0';
         return;
     }
     empty?.classList.add('hidden');
-    if(count) count.textContent = state.events.length;
+    if (count) count.textContent = state.events.length;
 
     state.events.sort((a, b) => new Date(a.datetimeStart) - new Date(b.datetimeStart));
 
     list.innerHTML = '';
-    
+
     state.events.forEach(e => {
         const start = new Date(e.datetimeStart);
         const end = new Date(e.datetimeEnd);
-        const dateStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const timeStr = `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-        
+        const dateStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const timeStr = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
         const item = document.createElement('div');
-        item.className = `event-item group ${newItemId === e.id ? 'event-enter-active' : ''}`;
-        
-        // Fix: Use textContent for Name and Location to prevent XSS
-        // We construct HTML string for structure but inject unsafe data safely
+
+        // Tailwind Card Style with Hover Actions
+        const animationClass = newItemId === e.id ? 'animate-fade-in' : '';
+        item.className = `group relative bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 hover:border-slate-600 rounded-2xl p-4 transition-all duration-200 ${animationClass}`;
+
+        // Construct inner HTML
+        let locationHTML = e.location ? `<div class="flex items-center gap-1.5 text-xs text-indigo-400 mt-2 font-medium"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg> ${e.location}</div>` : '';
+
         item.innerHTML = `
-            <div class="flex-grow pr-4">
-                <p class="text-lg font-bold text-white event-name"></p>
-                <p class="text-sm text-slate-400">${dateStr}, ${timeStr}</p>
-                <p class="text-xs text-indigo-400 event-location"></p>
-            </div>
-            <div class="flex space-x-2 opacity-0 group-hover:opacity-100 transition items-center">
-                 <button class="text-indigo-400 hover:bg-indigo-500/20 p-2 rounded btn-edit">Edit</button>
-                 <button class="text-blue-400 hover:bg-blue-500/20 p-2 rounded btn-copy">Copy</button>
-                 <button class="text-red-400 hover:bg-red-500/20 p-2 rounded btn-del">Del</button>
+            <div class="flex justify-between items-start">
+                <div class="flex-grow pr-12">
+                    <h4 class="text-lg font-bold text-white leading-tight mb-1 event-name"></h4>
+                    <div class="flex items-center gap-2 text-sm text-slate-400 font-mono">
+                        <span>${dateStr}</span>
+                        <span class="w-1 h-1 bg-slate-600 rounded-full"></span>
+                        <span>${timeStr}</span>
+                    </div>
+                    ${locationHTML}
+                </div>
+                
+                <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200">
+                     <button class="btn-edit p-2 bg-slate-700 hover:bg-primary text-slate-300 hover:text-white rounded-lg transition-colors" title="Edit">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                     </button>
+                     <button class="btn-copy p-2 bg-slate-700 hover:bg-secondary text-slate-300 hover:text-white rounded-lg transition-colors" title="Duplicate">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                     </button>
+                     <button class="btn-del p-2 bg-slate-700 hover:bg-red-500 text-slate-300 hover:text-white rounded-lg transition-colors" title="Delete">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                     </button>
+                </div>
             </div>`;
 
+        // Safe text injection
         item.querySelector('.event-name').textContent = e.name;
-        if (e.location) {
-            item.querySelector('.event-location').textContent = `📍 ${e.location}`;
-        }
 
         item.querySelector('.btn-edit').onclick = () => editEvent(e.id);
         item.querySelector('.btn-copy').onclick = () => duplicateEvent(e.id);
@@ -110,12 +127,11 @@ export function renderEvents(newItemId = null) {
     });
 }
 
+// ... (Keep deleteEvent, duplicateEvent, editEvent, resetFormState, handleEventSubmit, toggleClearModal, executeClearAll, and the setInterval logic EXACTLY AS THEY ARE. They don't generate HTML.) ...
+
 export function deleteEvent(id) {
     state.events = state.events.filter(e => e.id !== id);
-    // Fix: If deleting the event currently being edited, reset form
-    if (state.editingEventId === id) {
-        resetFormState();
-    }
+    if (state.editingEventId === id) resetFormState();
     saveToStorage(); renderEvents(); renderCalendar();
     showMessage('Event removed.');
 }
@@ -132,21 +148,22 @@ export function duplicateEvent(id) {
 export function editEvent(id) {
     const ev = state.events.find(e => e.id === id);
     if (!ev) return;
-    
+
     document.getElementById('event-name').value = ev.name;
     document.getElementById('event-location').value = ev.location || '';
     document.getElementById('event-datetime-start').value = ev.datetimeStart;
     document.getElementById('event-datetime-end').value = ev.datetimeEnd;
     document.getElementById('event-timezone').value = ev.timezone;
     document.getElementById('event-description').value = ev.description || '';
-    
+
     state.currentReminders = [...ev.reminders];
     state.editingEventId = id;
     renderReminders();
-    
+
     const btn = document.getElementById('submit-btn');
-    btn.innerHTML = 'Update Event';
-    btn.classList.replace('btn-primary', 'btn-secondary');
+    btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Update Event`;
+    // Change button visual state via classes isn't strictly necessary if we reuse the main class, 
+    // but you can add specific styling here if desired.
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -156,8 +173,7 @@ function resetFormState() {
     state.currentReminders = [];
     renderReminders();
     const btn = document.getElementById('submit-btn');
-    btn.innerHTML = 'Add Event';
-    btn.classList.replace('btn-secondary', 'btn-primary');
+    btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> Add Event`;
 }
 
 export function handleEventSubmit(e) {
@@ -165,17 +181,15 @@ export function handleEventSubmit(e) {
     const name = document.getElementById('event-name').value.trim();
     const start = document.getElementById('event-datetime-start').value;
     let end = document.getElementById('event-datetime-end').value;
-    
+
     if (!name || !start) { showMessage('Name and Start Time required.', 'error'); return; }
-    
     if (!end) end = start;
-    // Fix: Date comparison safety
     else if (new Date(start) > new Date(end)) { showMessage('End date cannot be before start.', 'error'); return; }
 
     const eventData = {
-        name, 
+        name,
         location: document.getElementById('event-location').value.trim(),
-        datetimeStart: start, 
+        datetimeStart: start,
         datetimeEnd: end,
         timezone: document.getElementById('event-timezone').value,
         description: document.getElementById('event-description').value.trim(),
@@ -195,7 +209,6 @@ export function handleEventSubmit(e) {
         state.currentReminders = [];
         renderReminders();
     }
-    
     saveToStorage(); renderEvents(); renderCalendar();
 }
 
@@ -203,30 +216,30 @@ export function toggleClearModal(show) {
     const modal = document.getElementById('confirm-clear-modal');
     if (!modal) return;
     if (show && state.events.length === 0) return showMessage('List is already empty.', 'error');
-    
+
     document.getElementById('events-to-clear-count').textContent = state.events.length;
+    modal.classList.toggle(show ? 'flex' : 'hidden', show);
     modal.classList.toggle('hidden', !show);
 }
 
 export function executeClearAll() {
     const count = state.events.length;
     state.events = [];
-    resetFormState(); // Fix: Ensure edit mode is exited
+    resetFormState();
     renderEvents(); renderCalendar();
     toggleClearModal(false);
     saveToStorage();
     showMessage(`Cleared ${count} events.`);
 }
+
+// Notification Checker
 setInterval(() => {
     if (Notification.permission !== 'granted') return;
-    
     const now = new Date();
     state.events.forEach(event => {
         const start = new Date(event.datetimeStart);
-        
         event.reminders.forEach(reminder => {
             let triggerTime = new Date(start);
-            // Parse duration (Simple logic for common types)
             if (reminder.includes('PT')) {
                 const match = reminder.match(/PT(\d+)([MH])/);
                 if (match) {
@@ -238,18 +251,12 @@ setInterval(() => {
                 const match = reminder.match(/P(\d+)D/);
                 if (match) triggerTime.setDate(start.getDate() - parseInt(match[1]));
             }
-
-            // Check if reminder is within this exact minute
             if (now.getFullYear() === triggerTime.getFullYear() &&
                 now.getMonth() === triggerTime.getMonth() &&
                 now.getDate() === triggerTime.getDate() &&
                 now.getHours() === triggerTime.getHours() &&
                 now.getMinutes() === triggerTime.getMinutes()) {
-                
-                new Notification(`Upcoming Event: ${event.name}`, {
-                    body: `Starting at ${start.toLocaleTimeString()}`,
-                    icon: 'assets/favicon.jpg'
-                });
+                new Notification(`Upcoming Event: ${event.name}`, { body: `Starting at ${start.toLocaleTimeString()}`, icon: 'assets/favicon.jpg' });
             }
         });
     });

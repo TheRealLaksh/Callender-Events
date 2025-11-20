@@ -1,336 +1,416 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="assets/favicon.jpg">
     <title>Calibridge - Calendar Bridge</title>
-    <meta name="description"
-        content="Calibridge: A modern, privacy-first calendar event manager supporting .ics import/export and offline usage.">
+    <meta name="description" content="Calibridge: Modern, privacy-first calendar event manager.">
     <link rel="manifest" href="manifest.json">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-
     <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet">
 
-    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e32', // Custom darker slate
+                            950: '#020617', // Deepest background
+                        },
+                        primary: {
+                            DEFAULT: '#818cf8', // Indigo 400
+                            hover: '#6366f1',   // Indigo 500
+                        },
+                        secondary: {
+                            DEFAULT: '#34d399', // Emerald 400
+                            hover: '#10b981',   // Emerald 500
+                        }
+                    },
+                    animation: {
+                        'marquee': 'marquee 40s linear infinite',
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'slide-up': 'slideUp 0.4s ease-out forwards',
+                    },
+                    keyframes: {
+                        marquee: {
+                            '0%': { transform: 'translateX(0%)' },
+                            '100%': { transform: 'translateX(-100%)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom Scrollbar for Webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Hide Date Picker Icon but keep functionality */
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+            opacity: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 2.5rem;
+            height: 100%;
+            cursor: pointer;
+        }
+    </style>
 </head>
 
-<body class="min-h-screen">
+<body class="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary/30 selection:text-primary">
 
-    <div id="app" class="p-4 md:p-8 w-full max-w-6xl mx-auto flex flex-col">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-8 flex flex-col gap-8">
 
-        <header class="text-center mb-4 mt-4">
-            <h1 class="text-5xl sm:text-6xl font-extrabold mb-1 leading-tight tracking-tight text-white">Cali<span
-                    class="text-indigo-400">bridge</span></h1>
-            <p class="text-base sm:text-xl text-slate-400 font-light">Seamlessly Bridge Your Calendar Events</p>
+        <header class="text-center py-6 animate-fade-in">
+            <h1 class="text-5xl md:text-7xl font-display font-bold mb-2 tracking-tight text-white">
+                Cali<span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">bridge</span>
+            </h1>
+            <p class="text-lg text-slate-400 font-light">Seamlessly Bridge Your Calendar Events</p>
         </header>
 
-        <div class="feature-banner-container">
-            <div class="feature-text">
-                <span class="feature-item text-indigo-400">★ Google Calendar Ready</span>
-                <span class="feature-item text-emerald-400">★ Outlook Compatible</span>
-                <span class="feature-item text-indigo-400">★ Notion Integration</span>
-                <span class="feature-item text-emerald-400">★ Time Zone Flexible</span>
-                <span class="feature-item text-indigo-400">★ Import/Export .ics Files</span>
-                <span class="feature-item text-emerald-400">★ Premium Dark Mode</span>
-                <span class="feature-item text-indigo-400">★ iCal (Apple Calendar) Ready</span>
-                <span class="feature-item text-emerald-400">★ Batch Event Management</span>
-            </div>
-            <div class="feature-text" aria-hidden="true">
-                <span class="feature-item text-indigo-400">★ Google Calendar Ready</span>
-                <span class="feature-item text-emerald-400">★ Outlook Compatible</span>
-                <span class="feature-item text-indigo-400">★ Notion Integration</span>
-                <span class="feature-item text-emerald-400">★ Time Zone Flexible</span>
-                <span class="feature-item text-indigo-400">★ Import/Export .ics Files</span>
-                <span class="feature-item text-emerald-400">★ Premium Dark Mode</span>
-                <span class="feature-item text-indigo-400">★ iCal (Apple Calendar) Ready</span>
-                <span class="feature-item text-emerald-400">★ Batch Event Management</span>
+        <div class="relative w-full overflow-hidden bg-slate-900/50 border-y border-slate-800 backdrop-blur-sm py-2">
+            <div class="flex animate-marquee whitespace-nowrap items-center">
+                <div class="flex gap-12 px-6 min-w-full justify-around">
+                    <span class="text-sm font-medium text-indigo-400">★ Google Calendar Ready</span>
+                    <span class="text-sm font-medium text-emerald-400">★ Outlook Compatible</span>
+                    <span class="text-sm font-medium text-indigo-400">★ Notion Integration</span>
+                    <span class="text-sm font-medium text-emerald-400">★ Time Zone Flexible</span>
+                    <span class="text-sm font-medium text-indigo-400">★ Import/Export .ics Files</span>
+                    <span class="text-sm font-medium text-emerald-400">★ Premium Dark Mode</span>
+                    <span class="text-sm font-medium text-indigo-400">★ Apple Calendar Ready</span>
+                </div>
+                <div class="flex gap-12 px-6 min-w-full justify-around" aria-hidden="true">
+                    <span class="text-sm font-medium text-indigo-400">★ Google Calendar Ready</span>
+                    <span class="text-sm font-medium text-emerald-400">★ Outlook Compatible</span>
+                    <span class="text-sm font-medium text-indigo-400">★ Notion Integration</span>
+                    <span class="text-sm font-medium text-emerald-400">★ Time Zone Flexible</span>
+                    <span class="text-sm font-medium text-indigo-400">★ Import/Export .ics Files</span>
+                    <span class="text-sm font-medium text-emerald-400">★ Premium Dark Mode</span>
+                    <span class="text-sm font-medium text-indigo-400">★ Apple Calendar Ready</span>
+                </div>
             </div>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <div class="lg:col-span-1 card p-7 h-fit lg:sticky lg:top-8 animate-fade-in">
-                <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-white">Add New Event</h2>
-                <form id="event-form" class="space-y-5">
-                    <div>
-                        <label for="event-name" class="block text-sm font-medium text-slate-300 mb-1">Event Name</label>
-                        <input type="text" id="event-name" required class="w-full">
-                    </div>
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-                    <div>
-                        <label for="event-datetime-start" class="block text-sm font-medium text-slate-300 mb-1">Start
-                            Date & Time</label>
-                        <div class="relative">
-                            <input type="datetime-local" id="event-datetime-start" required class="w-full">
-                            <span
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-400 pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="event-datetime-end" class="block text-sm font-medium text-slate-300 mb-1">End Date &
-                            Time</label>
-                        <div class="relative">
-                            <input type="datetime-local" id="event-datetime-end" class="w-full">
-                            <span
-                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-indigo-400 pointer-events-none">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="event-timezone" class="block text-sm font-medium text-slate-300 mb-1">Time Zone
-                            (Optional)</label>
-                        <select id="event-timezone" class="w-full">
-                            <option value="Asia/Kolkata">IST (Asia/Kolkata) - Default</option>
-                            <option value="America/New_York">EST/EDT (New York)</option>
-                            <option value="Europe/London">GMT/BST (London)</option>
-                            <option value="Europe/Paris">CET/CEST (Paris)</option>
-                            <option value="America/Los_Angeles">PST/PDT (Los Angeles)</option>
-                            <option value="Asia/Tokyo">JST (Tokyo)</option>
-                            <option value="Australia/Sydney">AEST/AEDT (Sydney)</option>
-                        </select>
-                    </div>
-
-                    <div class="space-y-3 p-4 border border-slate-700 rounded-lg">
-                        <label class="block text-sm font-medium text-slate-300">Reminders</label>
-
-                        <div id="reminders-list" class="flex flex-wrap gap-2 mb-2 min-h-[20px]">
-                        </div>
-
-                        <button type="button" id="add-reminder-btn"
-                            class="btn bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 w-full text-sm py-2 px-3 min-h-[30px]"
-                            onclick="toggleReminderArea()">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <section class="lg:col-span-4 lg:sticky lg:top-8 space-y-6 animate-slide-up">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl">
+                    <h2 class="text-2xl font-display font-bold text-white mb-6 flex items-center gap-2">
+                        <span class="bg-primary/10 text-primary p-2 rounded-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
                             </svg>
-                            Add Reminder
-                        </button>
+                        </span>
+                        New Event
+                    </h2>
 
-                        <div id="reminder-selection-area" class="hidden space-y-3 pt-3 border-t border-slate-700/50">
-                            <p class="text-xs text-slate-400 font-semibold mb-2">Select Preset or Custom:</p>
+                    <form id="event-form" class="space-y-5">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Event
+                                Name</label>
+                            <input type="text" id="event-name" required
+                                class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-slate-600"
+                                placeholder="e.g., Team Meeting">
+                        </div>
 
-                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                <button type="button"
-                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                    onclick="addReminderToForm('-PT5M')">5 Min Before</button>
-                                <button type="button"
-                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                    onclick="addReminderToForm('-PT15M')">15 Min Before</button>
-                                <button type="button"
-                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                    onclick="addReminderToForm('-PT1H')">1 Hour Before</button>
-                                <button type="button"
-                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                    onclick="addReminderToForm('-PT2H')">2 Hours Before</button>
-                                <button type="button"
-                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                    onclick="addReminderToForm('-P1D')">1 Day Before</button>
-                                <button type="button"
-                                    class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
-                                    onclick="addReminderToForm('-P2D')">2 Days Before</button>
+                        <div class="grid grid-cols-1 gap-4">
+                            <div class="space-y-1.5">
+                                <label
+                                    class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Starts</label>
+                                <div class="relative group">
+                                    <input type="datetime-local" id="event-datetime-start" required
+                                        class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10">
+                                    <svg class="w-5 h-5 text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
                             </div>
-
-                            <div class="flex gap-2 pt-2 border-t border-slate-700/50">
-                                <input type="number" id="custom-reminder-value" class="w-1/3" placeholder="Time"
-                                    min="1">
-                                <select type="number" id="custom-reminder-unit" class="w-1/3">
-                                    <option value="M">Minutes</option>
-                                    <option value="H">Hours</option>
-                                    <option value="D">Days</option>
-                                </select>
-                                <button type="button" class="btn btn-secondary w-1/3 py-1.5 px-2 text-xs min-h-[30px]"
-                                    onclick="addCustomReminder()">Set Custom</button>
+                            <div class="space-y-1.5">
+                                <label
+                                    class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ends</label>
+                                <div class="relative group">
+                                    <input type="datetime-local" id="event-datetime-end"
+                                        class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10">
+                                    <svg class="w-5 h-5 text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
+                                        fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
 
-                    </div>
-                    <div>
-                        <label for="event-description" class="block text-sm font-medium text-slate-300 mb-1">Description
-                            (Optional)</label>
-                        <textarea id="event-description" rows="3" class="w-full"></textarea>
-                    </div>
-                    <div>
-                        <label for="event-location" class="block text-sm font-medium text-slate-300 mb-1">Location
-                            (Optional)</label>
-                        <input type="text" id="event-location" class="w-full"
-                            placeholder="e.g., Zoom Link or Office Address">
-                    </div>
-                    <button type="submit" id="submit-btn" class="btn btn-primary w-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                clip-rule="evenodd" />
-                        </svg>
-                        Add Event
-                    </button>
-                </form>
-            </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Time
+                                Zone</label>
+                            <select id="event-timezone"
+                                class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none appearance-none">
+                                <option value="Asia/Kolkata">IST (Kolkata)</option>
+                                <option value="America/New_York">EST (New York)</option>
+                                <option value="Europe/London">GMT (London)</option>
+                                <option value="Europe/Paris">CET (Paris)</option>
+                                <option value="America/Los_Angeles">PST (Los Angeles)</option>
+                                <option value="Asia/Tokyo">JST (Tokyo)</option>
+                                <option value="Australia/Sydney">AEST (Sydney)</option>
+                            </select>
+                        </div>
 
-            <div class="lg:col-span-2 space-y-7 animate-fade-in-delay">
-                <div class="card p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 id="month-year-display" class="text-2xl font-bold text-white"></h2>
-                        <div class="flex gap-2">
-                            <button id="prev-month-btn" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[32px]">
-                                &lt; Prev
+                        <div class="space-y-3 p-4 border border-slate-800 bg-slate-950/50 rounded-xl">
+                            <div class="flex justify-between items-center">
+                                <label
+                                    class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Reminders</label>
+                                <button type="button" onclick="toggleReminderArea()"
+                                    class="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 4v16m8-8H4" />
+                                    </svg> Add
+                                </button>
+                            </div>
+
+                            <div id="reminders-list" class="flex flex-wrap gap-2 empty:hidden"></div>
+
+                            <div id="reminder-selection-area"
+                                class="hidden pt-3 border-t border-slate-800/50 animate-fade-in">
+                                <div class="grid grid-cols-3 gap-2 mb-3">
+                                    <button type="button" onclick="addReminderToForm('-PT5M')"
+                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">5m</button>
+                                    <button type="button" onclick="addReminderToForm('-PT15M')"
+                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">15m</button>
+                                    <button type="button" onclick="addReminderToForm('-PT1H')"
+                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">1h</button>
+                                    <button type="button" onclick="addReminderToForm('-PT2H')"
+                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">2h</button>
+                                    <button type="button" onclick="addReminderToForm('-P1D')"
+                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">1d</button>
+                                    <button type="button" onclick="addReminderToForm('-P2D')"
+                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">2d</button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input type="number" id="custom-reminder-value" placeholder="#"
+                                        class="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-center focus:border-primary outline-none">
+                                    <select id="custom-reminder-unit"
+                                        class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm flex-1 focus:border-primary outline-none">
+                                        <option value="M">Mins</option>
+                                        <option value="H">Hours</option>
+                                        <option value="D">Days</option>
+                                    </select>
+                                    <button type="button" onclick="addCustomReminder()"
+                                        class="bg-primary hover:bg-primary-hover text-white rounded-lg px-3 text-sm transition">OK</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <input type="text" id="event-location" placeholder="Location (e.g. Zoom)"
+                                class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-sm">
+                            <textarea id="event-description" rows="2" placeholder="Notes or description..."
+                                class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-sm"></textarea>
+                        </div>
+
+                        <button type="submit" id="submit-btn"
+                            class="w-full bg-gradient-to-r from-primary to-primary-hover hover:to-primary text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-primary/25 transition-all active:scale-[0.98] flex justify-center items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Event
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="lg:col-span-8 space-y-8 animate-slide-up" style="animation-delay: 0.1s;">
+
+                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                        <h2 id="month-year-display" class="text-3xl font-display font-bold text-white tracking-tight">
+                        </h2>
+                        <div class="flex items-center bg-slate-950 rounded-lg p-1 border border-slate-800">
+                            <button id="prev-month-btn"
+                                class="p-2 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 19l-7-7 7-7" />
+                                </svg>
                             </button>
                             <button id="today-btn"
-                                class="btn bg-slate-600 hover:bg-slate-500 text-white py-1.5 px-3 text-xs min-h-[32px]">
-                                Today
-                            </button>
-                            <button id="next-month-btn" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[32px]">
-                                Next &gt;
+                                class="px-4 py-1 text-sm font-semibold text-slate-300 hover:text-white transition">Today</button>
+                            <button id="next-month-btn"
+                                class="p-2 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5l7 7-7 7" />
+                                </svg>
                             </button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-7 gap-1 mb-2 text-center">
-                        <div class="text-slate-500 text-xs font-bold uppercase">Sun</div>
-                        <div class="text-slate-500 text-xs font-bold uppercase">Mon</div>
-                        <div class="text-slate-500 text-xs font-bold uppercase">Tue</div>
-                        <div class="text-slate-500 text-xs font-bold uppercase">Wed</div>
-                        <div class="text-slate-500 text-xs font-bold uppercase">Thu</div>
-                        <div class="text-slate-500 text-xs font-bold uppercase">Fri</div>
-                        <div class="text-slate-500 text-xs font-bold uppercase">Sat</div>
+                    <div class="grid grid-cols-7 mb-4 text-center">
+                        <div class="text-slate-500 text-xs font-bold tracking-widest uppercase">Sun</div>
+                        <div class="text-slate-500 text-xs font-bold tracking-widest uppercase">Mon</div>
+                        <div class="text-slate-500 text-xs font-bold tracking-widest uppercase">Tue</div>
+                        <div class="text-slate-500 text-xs font-bold tracking-widest uppercase">Wed</div>
+                        <div class="text-slate-500 text-xs font-bold tracking-widest uppercase">Thu</div>
+                        <div class="text-slate-500 text-xs font-bold tracking-widest uppercase">Fri</div>
+                        <div class="text-slate-500 text-xs font-bold tracking-widest uppercase">Sat</div>
                     </div>
 
-                    <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center">
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-2 lg:gap-3">
                     </div>
                 </div>
-                <div class="card p-5 flex flex-col gap-4 w-full mb-8">
-                    <h2 class="text-xl sm:text-2xl font-bold text-white">Your Event List (<span id="event-count"
-                            class="text-indigo-400">0</span>)</h2>
 
-                    <div class="flex flex-wrap gap-3">
-                        <input type="file" id="ics-file-input" accept=".ics" class="hidden" onchange="importICS(event)">
-                        <button onclick="document.getElementById('ics-file-input').click()"
-                            class="btn btn-secondary flex-1 min-w-[120px]">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Import .ics
-                        </button>
+                <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+                    <div class="flex flex-col md:flex-row justify-between items-end md:items-center gap-4 mb-6">
+                        <div>
+                            <h2 class="text-2xl font-display font-bold text-white">Upcoming Events</h2>
+                            <p class="text-slate-400 text-sm mt-1">You have <span id="event-count"
+                                    class="text-primary font-bold">0</span> events scheduled.</p>
+                        </div>
 
-                        <button id="clear-all-btn"
-                            class="btn bg-red-600 hover:bg-red-700 text-white flex-1 min-w-[120px]">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Clear All
-                        </button>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <input type="file" id="ics-file-input" accept=".ics" class="hidden"
+                                onchange="importICS(event)">
+                            <button onclick="document.getElementById('ics-file-input').click()"
+                                class="flex-1 md:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-medium transition border border-slate-700 flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg> Import
+                            </button>
+                            <button id="clear-all-btn"
+                                class="flex-1 md:flex-none px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 rounded-xl text-sm font-medium transition">
+                                Clear All
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row gap-3 mt-2 border-t border-slate-700/50 pt-4">
-                        <input type="text" id="export-file-name" placeholder="Export File Name"
-                            class="w-full sm:flex-grow p-3 border-2 rounded-xl text-sm focus:ring-indigo-400 focus:border-indigo-400"
-                            value="Calibridge_Export">
-
-                        <button id="export-btn" class="btn btn-primary w-full sm:w-auto flex-shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-1" />
-                            </svg>
-                            Export
+                    <div class="flex gap-2 mb-6">
+                        <input type="text" id="export-file-name" placeholder="Filename (e.g. work-calendar)"
+                            class="flex-grow bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-primary transition">
+                        <button id="export-btn"
+                            class="px-5 py-2 bg-secondary hover:bg-secondary-hover text-slate-950 font-bold rounded-xl text-sm transition flex items-center gap-2">
+                            Export .ics
                         </button>
                     </div>
 
+                    <div id="event-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div id="empty-state"
+                            class="py-12 text-center border-2 border-dashed border-slate-800 rounded-2xl">
+                            <div
+                                class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-500">
+                                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <p class="text-slate-400 font-medium">No events yet</p>
+                            <p class="text-slate-600 text-sm">Add one above or import a file.</p>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="event-list" class="card overflow-hidden">
-
-                    <p class="p-8 text-slate-500 text-center text-lg italic" id="empty-state">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-600 mb-3"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        No events added yet. Start by filling out the form or importing a calendar file!
-                    </p>
-                </div>
-
-                <div id="message-box" class="hidden message-box p-4 rounded-xl font-medium shadow-lg" role="alert">
-                </div>
-
-            </div>
-        </div>
-
-        <div class="card mt-12 p-6">
-            <h3 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-400" viewBox="0 0 20 20"
-                    fill="currentColor">
-                    <path fill-rule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                        clip-rule="evenodd" />
-                </svg>
-                Quick Guide: Bridge Your Calendar in 4 Steps
-            </h3>
-            <ol class="list-decimal pl-5 space-y-2 text-slate-300">
-                <li>
-                    <strong>Add Your Events:</strong> Fill out the form fields (Name, Dates, Reminders) and click
-                    <strong>Add Event</strong>.
-                </li>
-                <li>
-                    <strong>Export the File:</strong> Click the <strong>Export</strong> button to download your
-                    customized <strong>.ics</strong> file.
-                </li>
-                <li>
-                    <strong>Open Your External App:</strong> Navigate to the calendar service you want to update
-                    (Google
-                    Calendar, Outlook, Notion, etc.).
-                </li>
-                <li>
-                    <strong>Import the Data:</strong> Find the 'Import' function within your chosen app, attach the
-                    downloaded <strong>.ics</strong> file, and you're set!
-                </li>
-            </ol>
-        </div>
-        <div id="confirm-clear-modal" class="modal-overlay hidden">
-            <div class="modal-content text-center">
-                <h3 class="text-2xl font-bold text-red-400 mb-4">Confirm Clear All</h3>
-                <p class="text-slate-400 mb-6">
-                    Are you sure you want to remove all **<span id="events-to-clear-count"
-                        class="font-semibold">0</span>**
-                    events from the list? This cannot be undone.
-                </p>
-                <div class="flex justify-center gap-4">
-                    <button id="cancel-clear-btn" class="btn bg-slate-600 hover:bg-slate-500 text-white w-1/2"
-                        onclick="toggleClearModal(false)">
-                        Cancel
-                    </button>
-                    <button id="execute-clear-btn" class="btn bg-red-600 hover:bg-red-700 text-white w-1/2">
-                        Yes, Clear All
-                    </button>
-                </div>
-            </div>
-        </div>
-        <footer class="mt-12 p-4 text-center border-t border-slate-700">
-            <p class="text-sm text-slate-500">
-                &copy; 2025 Calibridge | All rights reserved | Laksh Pradhwani
-            </p>
-        </footer>
+            </section>
     </div>
+
+    <section class="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 mt-8">
+        <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <span class="text-secondary">💡</span> Quick Guide
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm text-slate-400">
+            <div class="p-4 bg-slate-950 rounded-xl border border-slate-800/50">
+                <strong class="block text-white mb-1">1. Add Events</strong>
+                Fill in the details and set reminders. Supports multiple time zones.
+            </div>
+            <div class="p-4 bg-slate-950 rounded-xl border border-slate-800/50">
+                <strong class="block text-white mb-1">2. Export</strong>
+                Name your file and click Export. It generates a standard .ics file.
+            </div>
+            <div class="p-4 bg-slate-950 rounded-xl border border-slate-800/50">
+                <strong class="block text-white mb-1">3. Import Anywhere</strong>
+                Use the file in Google Calendar, Outlook, or Apple Calendar.
+            </div>
+            <div class="p-4 bg-slate-950 rounded-xl border border-slate-800/50">
+                <strong class="block text-white mb-1">4. Offline Capable</strong>
+                Install as a PWA to access your schedule without internet.
+            </div>
+        </div>
+    </section>
+
+    <footer class="text-center text-slate-600 text-sm py-8">
+        &copy; 2025 Calibridge. Built with Vanilla JS & Tailwind.
+    </footer>
+
+    <div id="confirm-clear-modal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div
+            class="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl transform transition-all scale-100">
+            <div
+                class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-2">Delete All Events?</h3>
+            <p class="text-slate-400 mb-8">This will permanently remove <span id="events-to-clear-count"
+                    class="font-bold text-white">0</span> events. This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button id="cancel-clear-btn"
+                    class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition">Cancel</button>
+                <button id="execute-clear-btn"
+                    class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium transition">Yes,
+                    Delete All</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-box"
+        class="fixed bottom-6 right-6 hidden px-6 py-4 rounded-xl shadow-2xl text-white font-medium transform transition-all duration-300 translate-y-10 opacity-0 z-50 flex items-center gap-3 border border-white/10 backdrop-blur-md">
+    </div>
+
+    </div>
+
     <script type="module" src="js/main.js"></script>
 </body>
 

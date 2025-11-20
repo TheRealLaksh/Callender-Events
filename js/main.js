@@ -7,16 +7,16 @@ import {
     addReminderToForm, addCustomReminder, removeReminder, 
     toggleReminderArea, toggleClearModal, executeClearAll 
 } from './events.js';
-import { showMessage } from './utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Load Data & Initial Render
     loadFromStorage();
     renderEvents();
     renderReminders();
     renderCalendar();
     setupExport();
 
-    // Event Listeners
+    // 2. Event Listeners
     document.getElementById('event-form')?.addEventListener('submit', handleEventSubmit);
     
     document.getElementById('prev-month-btn')?.addEventListener('click', () => changeMonth(-1));
@@ -28,27 +28,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('clear-all-btn')?.addEventListener('click', () => toggleClearModal(true));
     document.getElementById('execute-clear-btn')?.addEventListener('click', executeClearAll);
-
-    // --- PWA & Notifications Logic (Moved inside init) ---
     
-    // 1. Request Notification Permission (Best effort on load)
-    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        Notification.requestPermission().then(permission => {
-            if(permission === 'granted') {
-                console.log("Notifications enabled");
-            }
-        });
-    }
+    // Modal Close on 'Cancel'
+    document.getElementById('cancel-clear-btn')?.addEventListener('click', () => toggleClearModal(false));
 
-    // 2. Register Service Worker
+    // 3. Service Worker Registration
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('Service Worker Registered'))
-            .catch(err => console.error('SW Fail:', err));
+            .then(reg => console.log('Service Worker Registered', reg.scope))
+            .catch(err => console.error('SW Registration Failed:', err));
+    }
+
+    // 4. Request Notification Permission (Optional: on interaction is better, but load works for simple apps)
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
     }
 });
 
-// Expose to Window
+// Expose functions to Window for HTML onclick attributes
 window.deleteEvent = deleteEvent;
 window.duplicateEvent = duplicateEvent;
 window.editEvent = editEvent;

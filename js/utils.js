@@ -6,23 +6,31 @@ export function showMessage(message, type = 'success') {
     const messageBox = document.getElementById('message-box');
     if (!messageBox) return;
 
-    // Clear previous timeout to prevent premature hiding
     if (messageTimeout) clearTimeout(messageTimeout);
 
     messageBox.textContent = message;
-    const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
-    messageBox.className = `message-box p-4 rounded-xl text-white font-medium shadow-lg ${bgColor}`;
-    messageBox.classList.remove('hidden');
+    
+    // Tailwind classes for Success vs Error
+    const colorClasses = type === 'success' 
+        ? 'bg-emerald-500 shadow-emerald-500/20' 
+        : 'bg-red-500 shadow-red-500/20';
+    
+    // Reset base classes + add specific color
+    messageBox.className = `fixed bottom-6 right-6 px-6 py-4 rounded-xl shadow-2xl text-white font-medium transform transition-all duration-500 ease-out z-50 flex items-center gap-3 border border-white/10 backdrop-blur-md ${colorClasses}`;
+    
+    // Animate In
+    requestAnimationFrame(() => {
+        messageBox.classList.remove('translate-y-10', 'opacity-0', 'hidden');
+        messageBox.classList.add('translate-y-0', 'opacity-100');
+    });
 
-    // Restart animation
-    messageBox.style.animation = 'none';
-    void messageBox.offsetWidth;
-    messageBox.style.animation = null;
-
-    // Fix: Actually hide the element after animation so it doesn't block clicks
+    // Animate Out
     messageTimeout = setTimeout(() => {
-        messageBox.classList.add('hidden');
-    }, 5000);
+        messageBox.classList.remove('translate-y-0', 'opacity-100');
+        messageBox.classList.add('translate-y-10', 'opacity-0');
+        // Hide display:none after animation finishes
+        setTimeout(() => messageBox.classList.add('hidden'), 500);
+    }, 4000);
 }
 
 export function generateUniqueId() {
@@ -30,9 +38,7 @@ export function generateUniqueId() {
 }
 
 export function getReminderDisplayText(isoDuration) {
-    if (durationMap[isoDuration]) {
-        return durationMap[isoDuration];
-    }
+    if (durationMap[isoDuration]) return durationMap[isoDuration];
     const match = isoDuration.match(durationRegex);
     if (match) {
         if (match[1]) return `${match[1]} ${match[2] === 'D' ? 'Day(s)' : 'Hour(s)'}`;
