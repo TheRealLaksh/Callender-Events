@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     setupExport();
 
+    // Event Listeners
     document.getElementById('event-form')?.addEventListener('submit', handleEventSubmit);
     
     document.getElementById('prev-month-btn')?.addEventListener('click', () => changeMonth(-1));
@@ -26,8 +27,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('clear-all-btn')?.addEventListener('click', () => toggleClearModal(true));
-    // Update: Use the dedicated execute function from events.js
     document.getElementById('execute-clear-btn')?.addEventListener('click', executeClearAll);
+
+    // --- PWA & Notifications Logic (Moved inside init) ---
+    
+    // 1. Request Notification Permission (Best effort on load)
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+            if(permission === 'granted') {
+                console.log("Notifications enabled");
+            }
+        });
+    }
+
+    // 2. Register Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(() => console.log('Service Worker Registered'))
+            .catch(err => console.error('SW Fail:', err));
+    }
 });
 
 // Expose to Window
@@ -40,13 +58,3 @@ window.removeReminder = removeReminder;
 window.toggleReminderArea = toggleReminderArea;
 window.importICS = importICS;
 window.toggleClearModal = toggleClearModal;
-if ('Notification' in window && Notification.permission !== 'granted') {
-        Notification.requestPermission();
-    }
-
-    // Register Service Worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('Service Worker Registered'))
-            .catch(err => console.error('SW Fail:', err));
-    }
