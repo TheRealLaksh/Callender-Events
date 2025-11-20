@@ -1,6 +1,6 @@
 import { state, saveToStorage } from './state.js';
 import { showMessage, getReminderDisplayText } from './utils.js';
-import { renderCalendar } from './calendar.js';
+import { renderCalendar, renderEventSlots } from './calendar.js'; // Import renderEventSlots
 
 // --- Reminders Logic ---
 export function renderReminders() {
@@ -80,8 +80,13 @@ export function editEvent(id) {
 
     document.getElementById('event-name').value = ev.name;
     document.getElementById('event-location').value = ev.location || '';
-    document.getElementById('event-datetime-start').value = ev.datetimeStart;
-    document.getElementById('event-datetime-end').value = ev.datetimeEnd;
+    // Flatpickr will automatically detect the value change on the input
+    const startPicker = document.getElementById('event-datetime-start')._flatpickr;
+    const endPicker = document.getElementById('event-datetime-end')._flatpickr;
+    
+    if(startPicker) startPicker.setDate(ev.datetimeStart);
+    if(endPicker) endPicker.setDate(ev.datetimeEnd);
+
     document.getElementById('event-timezone').value = ev.timezone;
     document.getElementById('event-description').value = ev.description || '';
 
@@ -98,6 +103,13 @@ export function editEvent(id) {
 function resetFormState() {
     state.editingEventId = null;
     document.getElementById('event-form').reset();
+    
+    // Clear Flatpickr inputs visually
+    const startPicker = document.getElementById('event-datetime-start')._flatpickr;
+    const endPicker = document.getElementById('event-datetime-end')._flatpickr;
+    if(startPicker) startPicker.clear();
+    if(endPicker) endPicker.clear();
+
     state.currentReminders = [];
     renderReminders();
     const btn = document.getElementById('submit-btn');
@@ -110,10 +122,13 @@ export function handleEventSubmit(e) {
     const start = document.getElementById('event-datetime-start').value;
     let end = document.getElementById('event-datetime-end').value;
 
-    if (!name || !start) { showMessage('Name and Start Time required.', 'error'); return; }
-    if (!end) end = start; // Default end to start time
+    // JS Validation replaces HTML 'required' attribute to avoid conflicts
+    if (!name || !start) { 
+        showMessage('Name and Start Time required.', 'error'); 
+        return; 
+    }
+    if (!end) end = start;
     
-    // Simple date validation
     if (new Date(start) > new Date(end)) { showMessage('End date cannot be before start.', 'error'); return; }
 
     const eventData = {
@@ -135,13 +150,25 @@ export function handleEventSubmit(e) {
         const newId = state.eventIdCounter++;
         state.events.push({ id: newId, ...eventData });
         showMessage('Event added.');
+        
+        // FIX: Switch calendar view to the new event's date immediately
+        const newEventDate = new Date(start);
+        state.selectedDate = newEventDate;
+        state.currentCalendarDate = new Date(newEventDate); // Copy to avoid ref issues
+        
         document.getElementById('event-form').reset();
+        const startPicker = document.getElementById('event-datetime-start')._flatpickr;
+        const endPicker = document.getElementById('event-datetime-end')._flatpickr;
+        if(startPicker) startPicker.clear();
+        if(endPicker) endPicker.clear();
+
         state.currentReminders = [];
         renderReminders();
     }
 
     saveToStorage();
-    renderCalendar();
+    renderCalendar(); // This re-renders the grid
+    renderEventSlots(); // This ensures the list below the grid updates to show the new event
 }
 
 export function toggleClearModal(show) {
@@ -164,7 +191,7 @@ export function executeClearAll() {
     showMessage(`Cleared ${count} events.`);
 }
 
-// --- Notification System (Fixed) ---
+// --- Notification System ---
 let lastCheckTime = new Date();
 
 setInterval(() => {
@@ -178,7 +205,6 @@ setInterval(() => {
         event.reminders.forEach(reminder => {
             let triggerTime = new Date(start);
             
-            // Parse ISO Duration
             if (reminder.includes('PT')) {
                 const match = reminder.match(/PT(\d+)([MH])/);
                 if (match) {
@@ -191,8 +217,6 @@ setInterval(() => {
                 if (match) triggerTime.setDate(start.getDate() - parseInt(match[1]));
             }
             
-            // Check if triggerTime falls between lastCheckTime and now
-            // This handles missed checks due to sleep/throttling
             if (triggerTime > lastCheckTime && triggerTime <= now) {
                 new Notification(`Upcoming Event: ${event.name}`, { 
                     body: `Starting at ${start.toLocaleTimeString()}`, 
@@ -202,5 +226,5 @@ setInterval(() => {
         });
     });
     
-    lastCheckTime = now; // Update last check
-}, 10000); // Check every 10 seconds (more frequent is better for range checks)
+    lastCheckTime = now; 
+}, 10000);
