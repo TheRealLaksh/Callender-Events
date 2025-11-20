@@ -272,3 +272,46 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         transform: translateY(0);
     }
 }
+/* --- NEW CALENDAR GRID STYLES --- */
+
+.calendar-day {
+    aspect-ratio: 1; /* Keeps boxes square */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    color: var(--text-medium);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.calendar-day:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-light);
+}
+
+/* Highlight for the current day (Today) */
+.calendar-day.is-today {
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+/* Small dot indicator if the day has events */
+.event-indicator {
+    width: 6px;
+    height: 6px;
+    background-color: var(--secondary-color);
+    border-radius: 50%;
+    margin-top: 4px;
+}
+
+/* Style for empty grid slots (days from prev/next month) */
+.calendar-day.empty {
+    background-color: transparent;
+    cursor: default;
+}
