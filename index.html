@@ -10,21 +10,17 @@
         content="Calibridge: A modern, privacy-first calendar event manager supporting .ics import/export and offline usage.">
     <link rel="manifest" href="manifest.json">
 
-    <!-- Load Tailwind CSS CDN for utility classes -->
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <!-- Load Custom Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet">
 
-    <!-- Link to Custom Stylesheet -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body class="min-h-screen">
 
-    <!-- Increased max-w for better laptop/tablet viewing -->
     <div id="app" class="p-4 md:p-8 w-full max-w-6xl mx-auto flex flex-col">
 
         <header class="text-center mb-4 mt-4">
@@ -33,7 +29,6 @@
             <p class="text-base sm:text-xl text-slate-400 font-light">Seamlessly Bridge Your Calendar Events</p>
         </header>
 
-        <!-- Scrolling Feature Banner -->
         <div class="feature-banner-container">
             <div class="feature-text">
                 <span class="feature-item text-indigo-400">★ Google Calendar Ready</span>
@@ -45,7 +40,6 @@
                 <span class="feature-item text-indigo-400">★ iCal (Apple Calendar) Ready</span>
                 <span class="feature-item text-emerald-400">★ Batch Event Management</span>
             </div>
-            <!-- Duplicate the text to ensure continuous scroll without gaps -->
             <div class="feature-text" aria-hidden="true">
                 <span class="feature-item text-indigo-400">★ Google Calendar Ready</span>
                 <span class="feature-item text-emerald-400">★ Outlook Compatible</span>
@@ -57,13 +51,8 @@
                 <span class="feature-item text-emerald-400">★ Batch Event Management</span>
             </div>
         </div>
-        <!-- END: Scrolling Feature Banner -->
-
-
-        <!-- Main Layout -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <!-- 1. Event Input Form -->
             <div class="lg:col-span-1 card p-7 h-fit lg:sticky lg:top-8 animate-fade-in">
                 <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-white">Add New Event</h2>
                 <form id="event-form" class="space-y-5">
@@ -72,7 +61,6 @@
                         <input type="text" id="event-name" required class="w-full">
                     </div>
 
-                    <!-- START DATE & TIME -->
                     <div>
                         <label for="event-datetime-start" class="block text-sm font-medium text-slate-300 mb-1">Start
                             Date & Time</label>
@@ -89,7 +77,6 @@
                         </div>
                     </div>
 
-                    <!-- END DATE & TIME -->
                     <div>
                         <label for="event-datetime-end" class="block text-sm font-medium text-slate-300 mb-1">End Date &
                             Time</label>
@@ -120,16 +107,12 @@
                         </select>
                     </div>
 
-                    <!-- MULTIPLE REMINDERS INPUT AREA -->
                     <div class="space-y-3 p-4 border border-slate-700 rounded-lg">
                         <label class="block text-sm font-medium text-slate-300">Reminders</label>
 
-                        <!-- List of current reminders -->
                         <div id="reminders-list" class="flex flex-wrap gap-2 mb-2 min-h-[20px]">
-                            <!-- Reminders will be added here by JS -->
                         </div>
 
-                        <!-- Add Reminder Button -->
                         <button type="button" id="add-reminder-btn"
                             class="btn bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 w-full text-sm py-2 px-3 min-h-[30px]"
                             onclick="toggleReminderArea()">
@@ -140,11 +123,9 @@
                             Add Reminder
                         </button>
 
-                        <!-- Selection Area (Initially Hidden) -->
                         <div id="reminder-selection-area" class="hidden space-y-3 pt-3 border-t border-slate-700/50">
                             <p class="text-xs text-slate-400 font-semibold mb-2">Select Preset or Custom:</p>
 
-                            <!-- Preset Reminders -->
                             <div class="grid grid-cols-2 gap-2 text-sm">
                                 <button type="button"
                                     class="btn bg-slate-600/50 hover:bg-slate-500/50 text-white py-1.5 px-2 text-xs min-h-[30px]"
@@ -166,7 +147,6 @@
                                     onclick="addReminderToForm('-P2D')">2 Days Before</button>
                             </div>
 
-                            <!-- Custom Reminder Input -->
                             <div class="flex gap-2 pt-2 border-t border-slate-700/50">
                                 <input type="number" id="custom-reminder-value" class="w-1/3" placeholder="Time"
                                     min="1">
@@ -181,9 +161,6 @@
                         </div>
 
                     </div>
-                    <!-- END MULTIPLE REMINDERS INPUT AREA -->
-
-
                     <div>
                         <label for="event-description" class="block text-sm font-medium text-slate-300 mb-1">Description
                             (Optional)</label>
@@ -206,147 +183,129 @@
                 </form>
             </div>
 
-            <!-- 2. Event List and Controls -->
             <div class="lg:col-span-2 space-y-7 animate-fade-in-delay">
-                <div class="lg:col-span-2 space-y-7 animate-fade-in-delay">
-
-                    <div class="card p-6">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 id="month-year-display" class="text-2xl font-bold text-white"></h2>
-                            <div class="flex gap-2">
-                                <button id="prev-month-btn" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[32px]">
-                                    &lt; Prev
-                                </button>
-                                <button id="today-btn"
-                                    class="btn bg-slate-600 hover:bg-slate-500 text-white py-1.5 px-3 text-xs min-h-[32px]">
-                                    Today
-                                </button>
-                                <button id="next-month-btn" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[32px]">
-                                    Next &gt;
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-7 gap-1 mb-2 text-center">
-                            <div class="text-slate-500 text-xs font-bold uppercase">Sun</div>
-                            <div class="text-slate-500 text-xs font-bold uppercase">Mon</div>
-                            <div class="text-slate-500 text-xs font-bold uppercase">Tue</div>
-                            <div class="text-slate-500 text-xs font-bold uppercase">Wed</div>
-                            <div class="text-slate-500 text-xs font-bold uppercase">Thu</div>
-                            <div class="text-slate-500 text-xs font-bold uppercase">Fri</div>
-                            <div class="text-slate-500 text-xs font-bold uppercase">Sat</div>
-                        </div>
-
-                        <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center">
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 id="month-year-display" class="text-2xl font-bold text-white"></h2>
+                        <div class="flex gap-2">
+                            <button id="prev-month-btn" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[32px]">
+                                &lt; Prev
+                            </button>
+                            <button id="today-btn"
+                                class="btn bg-slate-600 hover:bg-slate-500 text-white py-1.5 px-3 text-xs min-h-[32px]">
+                                Today
+                            </button>
+                            <button id="next-month-btn" class="btn btn-secondary py-1.5 px-3 text-xs min-h-[32px]">
+                                Next &gt;
+                            </button>
                         </div>
                     </div>
-                    <!-- Controls: Export/Import & Renaming -->
-                    <div class="card p-5 flex flex-col gap-4 w-full mb-8">
-                        <h2 class="text-xl sm:text-2xl font-bold text-white">Your Event List (<span id="event-count"
-                                class="text-indigo-400">0</span>)</h2>
 
-                        <!-- Top Action Row (Import, Clear) -->
-                        <div class="flex flex-wrap gap-3">
-                            <!-- Import Button -->
-                            <input type="file" id="ics-file-input" accept=".ics" class="hidden"
-                                onchange="importICS(event)">
-                            <button onclick="document.getElementById('ics-file-input').click()"
-                                class="btn btn-secondary flex-1 min-w-[120px]">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Import .ics
-                            </button>
-
-                            <!-- Clear All Button -->
-                            <button id="clear-all-btn"
-                                class="btn bg-red-600 hover:bg-red-700 text-white flex-1 min-w-[120px]">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                                Clear All
-                            </button>
-                        </div>
-
-                        <!-- Bottom Export Row (File Name, Export) -->
-                        <div class="flex flex-col sm:flex-row gap-3 mt-2 border-t border-slate-700/50 pt-4">
-                            <!-- File Name Input -->
-                            <input type="text" id="export-file-name" placeholder="Export File Name"
-                                class="w-full sm:flex-grow p-3 border-2 rounded-xl text-sm focus:ring-indigo-400 focus:border-indigo-400"
-                                value="Calibridge_Export">
-
-                            <button id="export-btn" class="btn btn-primary w-full sm:w-auto flex-shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                                    stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-1" />
-                                </svg>
-                                Export
-                            </button>
-                        </div>
-
+                    <div class="grid grid-cols-7 gap-1 mb-2 text-center">
+                        <div class="text-slate-500 text-xs font-bold uppercase">Sun</div>
+                        <div class="text-slate-500 text-xs font-bold uppercase">Mon</div>
+                        <div class="text-slate-500 text-xs font-bold uppercase">Tue</div>
+                        <div class="text-slate-500 text-xs font-bold uppercase">Wed</div>
+                        <div class="text-slate-500 text-xs font-bold uppercase">Thu</div>
+                        <div class="text-slate-500 text-xs font-bold uppercase">Fri</div>
+                        <div class="text-slate-500 text-xs font-bold uppercase">Sat</div>
                     </div>
 
-                    <!-- Event List -->
-                    <div id="event-list" class="card overflow-hidden">
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center">
+                    </div>
+                </div>
+                <div class="card p-5 flex flex-col gap-4 w-full mb-8">
+                    <h2 class="text-xl sm:text-2xl font-bold text-white">Your Event List (<span id="event-count"
+                            class="text-indigo-400">0</span>)</h2>
 
-                        <p class="p-8 text-slate-500 text-center text-lg italic" id="empty-state">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-600 mb-3"
-                                fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <div class="flex flex-wrap gap-3">
+                        <input type="file" id="ics-file-input" accept=".ics" class="hidden" onchange="importICS(event)">
+                        <button onclick="document.getElementById('ics-file-input').click()"
+                            class="btn btn-secondary flex-1 min-w-[120px]">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            No events added yet. Start by filling out the form or importing a calendar file!
-                        </p>
+                            Import .ics
+                        </button>
+
+                        <button id="clear-all-btn"
+                            class="btn bg-red-600 hover:bg-red-700 text-white flex-1 min-w-[120px]">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Clear All
+                        </button>
                     </div>
 
-                    <!-- Message Box for Feedback -->
-                    <div id="message-box" class="hidden message-box p-4 rounded-xl font-medium shadow-lg" role="alert">
+                    <div class="flex flex-col sm:flex-row gap-3 mt-2 border-t border-slate-700/50 pt-4">
+                        <input type="text" id="export-file-name" placeholder="Export File Name"
+                            class="w-full sm:flex-grow p-3 border-2 rounded-xl text-sm focus:ring-indigo-400 focus:border-indigo-400"
+                            value="Calibridge_Export">
+
+                        <button id="export-btn" class="btn btn-primary w-full sm:w-auto flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3v-1" />
+                            </svg>
+                            Export
+                        </button>
                     </div>
 
                 </div>
-            </div>
 
-            <!--  Quick Guide Section -->
-            <div class="card mt-12 p-6">
-                <h3 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-400" viewBox="0 0 20 20"
-                        fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    Quick Guide: Bridge Your Calendar in 4 Steps
-                </h3>
-                <ol class="list-decimal pl-5 space-y-2 text-slate-300">
-                    <li>
-                        <strong>Add Your Events:</strong> Fill out the form fields (Name, Dates, Reminders) and click
-                        <strong>Add Event</strong>.
-                    </li>
-                    <li>
-                        <strong>Export the File:</strong> Click the <strong>Export</strong> button to download your
-                        customized <strong>.ics</strong> file.
-                    </li>
-                    <li>
-                        <strong>Open Your External App:</strong> Navigate to the calendar service you want to update
-                        (Google
-                        Calendar, Outlook, Notion, etc.).
-                    </li>
-                    <li>
-                        <strong>Import the Data:</strong> Find the 'Import' function within your chosen app, attach the
-                        downloaded <strong>.ics</strong> file, and you're set!
-                    </li>
-                </ol>
-            </div>
-            <!-- END NEW: Quick Guide Section -->
+                <div id="event-list" class="card overflow-hidden">
 
+                    <p class="p-8 text-slate-500 text-center text-lg italic" id="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-slate-600 mb-3"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        No events added yet. Start by filling out the form or importing a calendar file!
+                    </p>
+                </div>
+
+                <div id="message-box" class="hidden message-box p-4 rounded-xl font-medium shadow-lg" role="alert">
+                </div>
+
+            </div>
         </div>
 
-        <!-- START Clear All Confirmation Modal -->
+        <div class="card mt-12 p-6">
+            <h3 class="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-emerald-400" viewBox="0 0 20 20"
+                    fill="currentColor">
+                    <path fill-rule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clip-rule="evenodd" />
+                </svg>
+                Quick Guide: Bridge Your Calendar in 4 Steps
+            </h3>
+            <ol class="list-decimal pl-5 space-y-2 text-slate-300">
+                <li>
+                    <strong>Add Your Events:</strong> Fill out the form fields (Name, Dates, Reminders) and click
+                    <strong>Add Event</strong>.
+                </li>
+                <li>
+                    <strong>Export the File:</strong> Click the <strong>Export</strong> button to download your
+                    customized <strong>.ics</strong> file.
+                </li>
+                <li>
+                    <strong>Open Your External App:</strong> Navigate to the calendar service you want to update
+                    (Google
+                    Calendar, Outlook, Notion, etc.).
+                </li>
+                <li>
+                    <strong>Import the Data:</strong> Find the 'Import' function within your chosen app, attach the
+                    downloaded <strong>.ics</strong> file, and you're set!
+                </li>
+            </ol>
+        </div>
         <div id="confirm-clear-modal" class="modal-overlay hidden">
             <div class="modal-content text-center">
                 <h3 class="text-2xl font-bold text-red-400 mb-4">Confirm Clear All</h3>
@@ -366,18 +325,13 @@
                 </div>
             </div>
         </div>
-        <!-- END Clear All Confirmation Modal -->
-
-        <!-- START Footer for Licensing -->
         <footer class="mt-12 p-4 text-center border-t border-slate-700">
             <p class="text-sm text-slate-500">
                 &copy; 2025 Calibridge | All rights reserved | Laksh Pradhwani
             </p>
         </footer>
-        <!-- END Footer for Licensing -->
-
-        <!-- Link to JavaScript file -->
-        <script type="module" src="js/main.js"></script>
+    </div>
+    <script type="module" src="js/main.js"></script>
 </body>
 
 </html>
