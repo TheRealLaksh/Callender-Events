@@ -5,7 +5,8 @@ export const state = {
     eventIdCounter: 1,
     currentReminders: [],
     editingEventId: null,
-    currentCalendarDate: new Date()
+    currentCalendarDate: new Date(), // Tracks the Month being viewed
+    selectedDate: new Date()         // Tracks the specific Day selected
 };
 
 export function saveToStorage() {
@@ -17,7 +18,6 @@ export function loadFromStorage() {
     if (storedEvents) {
         try {
             state.events = JSON.parse(storedEvents);
-            // Fix ID counter to avoid collisions with existing events
             if (state.events.length > 0) {
                 const maxId = Math.max(...state.events.map(e => e.id));
                 state.eventIdCounter = maxId + 1;
