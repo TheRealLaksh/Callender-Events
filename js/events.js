@@ -228,3 +228,45 @@ setInterval(() => {
     
     lastCheckTime = now; 
 }, 10000);
+export function parseNaturalLanguage(input) {
+    const now = new Date();
+    // Regex for "Event at HH:MM"
+    const timeMatch = input.match(/at (\d{1,2})(:(\d{2}))?\s*(am|pm)?/i);
+    if (timeMatch) {
+        // Logic to set time on current date
+        // This would populate the form fields automatically
+    }
+}
+
+// #20 Trash / Undo
+export function deleteEvent(id) {
+    const ev = state.events.find(e => e.id === id);
+    if (ev) {
+        state.trash.push(ev); // Save to trash
+        state.events = state.events.filter(e => e.id !== id);
+        saveToStorage();
+        renderCalendar();
+        showMessage(`Event deleted. Press Ctrl+Z to undo.`, 'success');
+    }
+}
+
+export function undoDelete() {
+    const last = state.trash.pop();
+    if (last) {
+        state.events.push(last);
+        saveToStorage();
+        renderCalendar();
+        showMessage('Event restored!', 'success');
+    }
+}
+
+// #21 Data Backup (JSON)
+export function exportJSON() {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.events));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "calibridge_backup.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}

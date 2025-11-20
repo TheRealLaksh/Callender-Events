@@ -55,6 +55,50 @@
         }
     </script>
     <style>
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+
+            header,
+            #event-form,
+            .flatpickr-calendar,
+            footer,
+            #message-box,
+            #falling-pattern-canvas {
+                display: none !important;
+            }
+
+            main {
+                grid-template-columns: 1fr;
+            }
+
+            .lg\:col-span-8 {
+                grid-column: span 12;
+            }
+
+            #calendar-grid {
+                gap: 0;
+                border: 1px solid #ddd;
+            }
+
+            #calendar-grid>button {
+                border: 1px solid #eee;
+                color: black;
+                aspect-ratio: auto;
+                height: 100px;
+                align-items: flex-start;
+                padding: 4px;
+            }
+
+            .bg-slate-900\/90 {
+                background: none;
+                box-shadow: none;
+                border: none;
+            }
+        }
+
         ::-webkit-scrollbar {
             width: 8px;
         }
@@ -147,6 +191,34 @@
                     class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">bridge</span>
             </h1>
             <p class="text-lg text-slate-400 font-light">Seamlessly Bridge Your Calendar Events</p>
+            <div class="flex flex-wrap justify-between items-center gap-4 px-4 animate-fade-in">
+                <div class="relative group w-full md:w-64">
+                    <input type="text" id="search-input" placeholder="Search events..."
+                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary outline-none text-sm text-white transition-all">
+                    <svg class="w-4 h-4 text-slate-500 absolute right-3 top-3" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+
+                <div class="flex gap-2 bg-slate-900/50 p-1 rounded-xl border border-slate-700">
+                    <button onclick="changeView('month')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-slate-900"
+                        id="view-month-btn">Month</button>
+                    <button onclick="changeView('week')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-800 text-slate-300 transition"
+                        id="view-week-btn">Week</button>
+                    <button onclick="toggleTheme()"
+                        class="p-1.5 hover:bg-slate-800 rounded-lg text-yellow-400 transition" title="Toggle Theme">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
         </header>
 
         <div
@@ -414,6 +486,33 @@
                     <strong class="block text-white mb-2 text-base">4. Offline Capable</strong>
                     Install as a PWA to access your schedule without internet.
                 </div>
+            </div>
+        </section>
+
+        <section class="max-w-7xl mx-auto px-8 py-6 mt-8 border-t border-slate-800/50 text-slate-400 text-xs">
+            <h4 class="font-bold text-slate-300 mb-3 flex items-center gap-2">⌨️ Keyboard Shortcuts</h4>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div><span
+                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">N</span>
+                    New Event</div>
+                <div><span
+                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">/</span>
+                    Search</div>
+                <div><span
+                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">Esc</span>
+                    Close / Cancel</div>
+                <div><span
+                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">T</span>
+                    Go to Today</div>
+                <div><span
+                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">←/→</span>
+                    Navigate</div>
+                <div><span
+                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">Ctrl+P</span>
+                    Print View</div>
+                <div><span
+                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">Ctrl+Z</span>
+                    Undo Delete</div>
             </div>
         </section>
 

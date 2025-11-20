@@ -6,7 +6,10 @@ export const state = {
     currentReminders: [],
     editingEventId: null,
     currentCalendarDate: new Date(), // Tracks the Month being viewed
-    selectedDate: new Date()         // Tracks the specific Day selected
+    selectedDate: new Date()   ,
+     trash: [],           // #20 Trash / Undo
+    viewMode: 'month',   // #2 Week & Day Views
+    categories: ['Work', 'Personal', 'Health', 'Important'], // #3 Categories      // Tracks the specific Day selected
 };
 
 export function saveToStorage() {

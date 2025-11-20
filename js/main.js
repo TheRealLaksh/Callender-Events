@@ -1,9 +1,9 @@
-import { loadFromStorage, state } from './state.js';
-import { renderCalendar, changeMonth, renderEventSlots } from './calendar.js';
+import { loadFromStorage, state, saveToStorage } from './state.js';
+import { renderCalendar, changeMonth, renderEventSlots, changeView } from './calendar.js';
 import { setupExport, importICS } from './ics.js';
 import { 
     renderReminders, handleEventSubmit, 
-    editEvent, deleteEvent, duplicateEvent, 
+    editEvent, deleteEvent, duplicateEvent, undoDelete,
     addReminderToForm, addCustomReminder, removeReminder, 
     toggleReminderArea, toggleClearModal, executeClearAll 
 } from './events.js';
@@ -16,9 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     setupExport();
     
-    // 2. Initialize Flatpickr (New Date Picker)
-    // altFormat displays friendly date to user
-    // dateFormat sends ISO-like string (YYYY-MM-DDTHH:mm) to internal value, compatible with your existing logic
+    // 2. Initialize Flatpickr
     flatpickr("#event-datetime-start", {
         enableTime: true,
         dateFormat: "Y-m-d\\TH:i", 
@@ -58,6 +56,53 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('execute-clear-btn')?.addEventListener('click', executeClearAll);
     document.getElementById('cancel-clear-btn')?.addEventListener('click', () => toggleClearModal(false));
 
+    // --- #8 Search Listener ---
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            renderEventSlots(); // Re-render list based on search term
+        });
+    }
+
+    // --- #23 Keyboard Shortcuts ---
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+Z: Undo
+        if (e.ctrlKey && e.key === 'z') {
+            e.preventDefault();
+            undoDelete();
+        }
+        // Slash: Focus Search
+        if (e.key === '/') {
+            if(document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                e.preventDefault();
+                document.getElementById('search-input')?.focus();
+            }
+        }
+        // Arrows: Navigation
+        if(document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+            if (e.key === 'ArrowRight') changeMonth(1);
+            if (e.key === 'ArrowLeft') changeMonth(-1);
+        }
+    });
+
+    // --- #9 Swipe Gestures (Touch) ---
+    const grid = document.getElementById('calendar-grid');
+    let touchStartX = 0;
+    
+    if (grid) {
+        grid.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, {passive: true});
+
+        grid.addEventListener('touchend', e => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            // Threshold of 50px for swipe
+            if (diff > 50) changeMonth(1); // Swipe Left -> Next
+            if (diff < -50) changeMonth(-1); // Swipe Right -> Prev
+        }, {passive: true});
+    }
+
     // 5. Service Worker Registration
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
@@ -71,6 +116,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- Window Exports (for HTML onclick handlers) ---
+
+// #6 Theme Toggle
+window.toggleTheme = () => {
+    document.documentElement.classList.toggle('dark');
+    const isDark = document.documentElement.classList.contains('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    // Optional: Update Flatpickr theme dynamically if needed, but usually requires CSS swap
+};
+
+// Initialize theme from storage
+if (localStorage.getItem('theme') === 'light') {
+    document.documentElement.classList.remove('dark');
+}
+
+// Export other functions
 window.deleteEvent = deleteEvent;
 window.duplicateEvent = duplicateEvent;
 window.editEvent = editEvent;
@@ -80,3 +141,4 @@ window.removeReminder = removeReminder;
 window.toggleReminderArea = toggleReminderArea;
 window.importICS = importICS;
 window.toggleClearModal = toggleClearModal;
+window.changeView = changeView; // Export view switcher
