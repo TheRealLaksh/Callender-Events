@@ -1,17 +1,19 @@
 import { state, saveToStorage } from './state.js';
 import { generateUniqueId, showMessage } from './utils.js';
 import { IST_VTIMEZONE } from './config.js';
-import { renderEvents } from './events.js';
-import { renderCalendar } from './calendar.js';
+import { renderCalendar } from './calendar.js'; 
 
 function formatICSDateTZ(isoString, tzid) {
     if (!isoString) return '';
-    const formattedDate = isoString.slice(0, 16).replace(/[-:]/g, '').replace('T', 'T') + '00';
-    return `TZID=${tzid}:${formattedDate}`;
+    // Remove - : and . and milliseconds if present
+    // ISO: 2023-10-10T10:00:00.000 -> ICS: 20231010T100000
+    let clean = isoString.replace(/[-:]/g, '').split('.')[0];
+    if (!clean.includes('T')) clean += 'T000000';
+    return `TZID=${tzid}:${clean}`;
 }
 
 function createAlarmBlock(reminderValue) {
-    const now = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', 'T') + 'Z';
+    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     return [
         'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Reminder', 
         `TRIGGER:${reminderValue}`, `UID:${generateUniqueId()}-alarm`, `DTSTAMP:${now}`, 'END:VALARM'
@@ -19,15 +21,20 @@ function createAlarmBlock(reminderValue) {
 }
 
 function formatICSDateToISO(icsDate) {
-    if (icsDate.includes('T')) {
+    // Handle "20231010T100000" -> "2023-10-10T10:00"
+    if (icsDate.length >= 13 && icsDate.includes('T')) {
         return icsDate.substring(0, 4) + '-' + icsDate.substring(4, 6) + '-' + icsDate.substring(6, 8) + 'T' + icsDate.substring(9, 11) + ':' + icsDate.substring(11, 13);
     }
-    return icsDate.substring(0, 4) + '-' + icsDate.substring(4, 6) + '-' + icsDate.substring(6, 8) + 'T00:00';
+    // Handle "20231010" -> "2023-10-10T00:00"
+    if (icsDate.length === 8) {
+        return icsDate.substring(0, 4) + '-' + icsDate.substring(4, 6) + '-' + icsDate.substring(6, 8) + 'T00:00';
+    }
+    return icsDate; // Fallback
 }
 
-// Fix: Handle RFC 5545 Line Folding (CRLF + Space)
+// Fix: Handle RFC 5545 Line Folding (CRLF + Space or Tab)
 function unfoldICSLines(content) {
-    return content.replace(/\r\n /g, '').replace(/\n /g, '').split(/\r\n|\n|\r/);
+    return content.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '').split(/\r\n|\n|\r/);
 }
 
 function parseICS(icsContent) {
@@ -40,36 +47,47 @@ function parseICS(icsContent) {
             currentEvent = { name: 'Untitled', timezone: 'Asia/Kolkata', reminders: [] };
         } else if (line.startsWith('END:VEVENT') && currentEvent) {
             if (currentEvent.datetimeStart) {
+                // Default end time if missing
                 if (!currentEvent.datetimeEnd) {
                     const start = new Date(currentEvent.datetimeStart);
-                    const end = new Date(start.getTime() + 3600000);
+                    const end = new Date(start.getTime() + 3600000); // +1 Hour
                     currentEvent.datetimeEnd = end.toISOString().substring(0, 16);
                 }
                 importedEvents.push(currentEvent);
             }
             currentEvent = null;
         } else if (currentEvent) {
-            // Fix: Correctly split Key and Value (handle colons in Description/Summary)
             const firstColonIndex = line.indexOf(':');
             if (firstColonIndex === -1) return;
             
-            const keyPart = line.substring(0, firstColonIndex);
+            // Handle params like DTSTART;TZID=...:2023...
+            const keyFull = line.substring(0, firstColonIndex);
             const value = line.substring(firstColonIndex + 1);
             
-            if (keyPart.startsWith('SUMMARY')) currentEvent.name = value.replace(/\\n/g, '\n');
-            else if (keyPart.startsWith('DESCRIPTION')) currentEvent.description = value.replace(/\\n/g, '\n');
-            else if (keyPart.startsWith('LOCATION')) currentEvent.location = value.replace(/\\n/g, '\n');
-            else if (keyPart.startsWith('DTSTART')) {
-                const tzid = keyPart.match(/TZID=([^;,\r\n]+)/);
+            const keyPart = keyFull.split(';')[0];
+
+            if (keyPart === 'SUMMARY') currentEvent.name = value.replace(/\\n/g, '\n');
+            else if (keyPart === 'DESCRIPTION') currentEvent.description = value.replace(/\\n/g, '\n');
+            else if (keyPart === 'LOCATION') currentEvent.location = value.replace(/\\n/g, '\n');
+            else if (keyPart === 'DTSTART') {
+                const tzid = keyFull.match(/TZID=([^;:]+)/);
                 if (tzid) currentEvent.timezone = tzid[1];
+                // Improved regex to capture basic date formats
                 const val = value.match(/(\d{8}T\d{6}|\d{8})/);
                 if (val) currentEvent.datetimeStart = formatICSDateToISO(val[0]);
-            } else if (keyPart.startsWith('DTEND')) {
+            } else if (keyPart === 'DTEND') {
                  const val = value.match(/(\d{8}T\d{6}|\d{8})/);
                  if (val) currentEvent.datetimeEnd = formatICSDateToISO(val[0]);
-            } else if (line.startsWith('TRIGGER')) {
-                 const tr = line.match(/TRIGGER:(-P[0-9]+[DTWHMS])/);
-                 if (tr && !currentEvent.reminders.includes(tr[1])) currentEvent.reminders.push(tr[1]);
+            } else if (keyPart === 'TRIGGER') {
+                 // Capture ISO8601 duration
+                 const tr = line.match(/(P[0-9]+[DTWHMS].*)/);
+                 // Note: ICS triggers might not match our specific subset, but we try
+                 // standard is TRIGGER:-PT5M or TRIGGER;RELATED=START:-PT5M
+                 // We look for the P... part
+                 const durMatch = value.match(/(-?P[\d\w]+)/);
+                 if (durMatch && !currentEvent.reminders.includes(durMatch[0])) {
+                     currentEvent.reminders.push(durMatch[0]);
+                 }
             }
         }
     });
@@ -85,7 +103,8 @@ export function importICS(event) {
             const imported = parseICS(e.target.result);
             if (imported.length === 0) { showMessage('No events found.', 'error'); return; }
             imported.forEach(ev => { state.events.push({ ...ev, id: state.eventIdCounter++ }); });
-            saveToStorage(); renderEvents(); renderCalendar();
+            saveToStorage(); 
+            renderCalendar(); // Correct function call
             showMessage(`Imported ${imported.length} events!`, 'success');
         } catch (error) { 
             console.error(error);
@@ -105,7 +124,7 @@ export function setupExport() {
         if (!fileName.endsWith('.ics')) fileName += '.ics';
 
         const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Calibridge//EN', 'CALSCALE:GREGORIAN', IST_VTIMEZONE];
-        const now = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', 'T') + 'Z';
+        const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
         state.events.forEach(e => {
             const tzid = e.timezone || 'Asia/Kolkata';

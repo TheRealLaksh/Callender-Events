@@ -1,5 +1,5 @@
 import { loadFromStorage, state } from './state.js';
-import { renderCalendar, changeMonth } from './calendar.js';
+import { renderCalendar, changeMonth, renderEventSlots } from './calendar.js';
 import { setupExport, importICS } from './ics.js';
 import { 
     renderReminders, handleEventSubmit, 
@@ -16,37 +16,61 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
     setupExport();
     
-    // 2. Start Background Animation
+    // 2. Initialize Flatpickr (New Date Picker)
+    // altFormat displays friendly date to user
+    // dateFormat sends ISO-like string (YYYY-MM-DDTHH:mm) to internal value, compatible with your existing logic
+    flatpickr("#event-datetime-start", {
+        enableTime: true,
+        dateFormat: "Y-m-d\\TH:i", 
+        altInput: true,
+        altFormat: "F j, Y at h:i K",
+        time_24hr: false,
+        theme: "dark"
+    });
+
+    flatpickr("#event-datetime-end", {
+        enableTime: true,
+        dateFormat: "Y-m-d\\TH:i",
+        altInput: true,
+        altFormat: "F j, Y at h:i K",
+        time_24hr: false,
+        theme: "dark"
+    });
+
+    // 3. Start Background Animation
     initFallingPattern();
 
-    // 3. Event Listeners
+    // 4. Event Listeners
     document.getElementById('event-form')?.addEventListener('submit', handleEventSubmit);
     
     document.getElementById('prev-month-btn')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('next-month-btn')?.addEventListener('click', () => changeMonth(1));
+    
     document.getElementById('today-btn')?.addEventListener('click', () => {
-        state.currentCalendarDate = new Date();
+        const now = new Date();
+        state.currentCalendarDate = now;
+        state.selectedDate = now;
         renderCalendar();
+        renderEventSlots();
     });
 
     document.getElementById('clear-all-btn')?.addEventListener('click', () => toggleClearModal(true));
     document.getElementById('execute-clear-btn')?.addEventListener('click', executeClearAll);
     document.getElementById('cancel-clear-btn')?.addEventListener('click', () => toggleClearModal(false));
 
-    // 4. Service Worker Registration
+    // 5. Service Worker Registration
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
             .then(reg => console.log('Service Worker Registered', reg.scope))
             .catch(err => console.error('SW Registration Failed:', err));
     }
 
-    // 5. Request Notification Permission
+    // 6. Request Notification Permission
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         Notification.requestPermission();
     }
 });
 
-// Expose functions to Window
 window.deleteEvent = deleteEvent;
 window.duplicateEvent = duplicateEvent;
 window.editEvent = editEvent;

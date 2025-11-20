@@ -13,6 +13,9 @@
         href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Inter:wght@400;500;600&display=swap"
         rel="stylesheet">
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -69,14 +72,59 @@
             background: #475569;
         }
 
-        input[type="datetime-local"]::-webkit-calendar-picker-indicator {
-            opacity: 0;
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: 2.5rem;
-            height: 100%;
-            cursor: pointer;
+        /* Custom styling to match Flatpickr with Tailwind Indigo */
+        .flatpickr-calendar.dark {
+            background: #1e293b;
+            /* slate-800 */
+            border: 1px solid #334155;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        .flatpickr-day.selected,
+        .flatpickr-day.startRange,
+        .flatpickr-day.endRange,
+        .flatpickr-day.selected.inRange,
+        .flatpickr-day.startRange.inRange,
+        .flatpickr-day.endRange.inRange,
+        .flatpickr-day.selected:focus,
+        .flatpickr-day.startRange:focus,
+        .flatpickr-day.endRange:focus,
+        .flatpickr-day.selected:hover,
+        .flatpickr-day.startRange:hover,
+        .flatpickr-day.endRange:hover,
+        .flatpickr-day.selected.prevMonthDay,
+        .flatpickr-day.startRange.prevMonthDay,
+        .flatpickr-day.endRange.prevMonthDay,
+        .flatpickr-day.selected.nextMonthDay,
+        .flatpickr-day.startRange.nextMonthDay,
+        .flatpickr-day.endRange.nextMonthDay {
+            background: #818cf8;
+            /* Tailwind Primary */
+            border-color: #818cf8;
+            color: #0f172a;
+            font-weight: bold;
+        }
+
+        .flatpickr-months .flatpickr-month {
+            background: #0f172a;
+            /* slate-950 */
+            color: #fff;
+        }
+
+        .flatpickr-current-month .flatpickr-monthDropdown-months {
+            background: #0f172a;
+        }
+
+        span.flatpickr-weekday {
+            background: #0f172a;
+            color: #94a3b8;
+        }
+
+        .flatpickr-time input:hover,
+        .flatpickr-time .flatpickr-am-pm:hover,
+        .flatpickr-time input:focus,
+        .flatpickr-time .flatpickr-am-pm:focus {
+            background: #334155;
         }
     </style>
 </head>
@@ -154,8 +202,9 @@
                                 <label
                                     class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Starts</label>
                                 <div class="relative group">
-                                    <input type="datetime-local" id="event-datetime-start" required
-                                        class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10">
+                                    <input type="text" id="event-datetime-start" required
+                                        placeholder="Select date & time..."
+                                        class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10 cursor-pointer">
                                     <svg class="w-5 h-5 text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -167,8 +216,8 @@
                                 <label
                                     class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ends</label>
                                 <div class="relative group">
-                                    <input type="datetime-local" id="event-datetime-end"
-                                        class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10">
+                                    <input type="text" id="event-datetime-end" placeholder="Select date & time..."
+                                        class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10 cursor-pointer">
                                     <svg class="w-5 h-5 text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -255,12 +304,12 @@
                 </div>
             </section>
 
-            <section class="lg:col-span-8 space-y-6 animate-slide-up" style="animation-delay: 0.1s;">
+            <section class="lg:col-span-8 space-y-6 animate-slide-up w-full" style="animation-delay: 0.1s;">
 
                 <div
-                    class="bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden">
+                    class="max-w-3xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden">
 
-                    <div class="p-6 md:p-8">
+                    <div class="p-5 md:p-6">
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                             <h2 id="month-year-display"
                                 class="text-3xl font-display font-bold text-white tracking-tight"></h2>
@@ -315,7 +364,7 @@
                     </div>
                 </div>
 
-                <div class="flex flex-wrap gap-3">
+                <div class="max-w-3xl mx-auto flex flex-wrap gap-3">
                     <input type="file" id="ics-file-input" accept=".ics" class="hidden" onchange="importICS(event)">
                     <button onclick="document.getElementById('ics-file-input').click()"
                         class="flex-1 px-4 py-3 bg-slate-900/80 hover:bg-slate-800 text-slate-300 rounded-xl text-sm font-medium border border-slate-700 transition flex items-center justify-center gap-2">
@@ -403,6 +452,7 @@
 
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script type="module" src="js/main.js"></script>
 </body>
 

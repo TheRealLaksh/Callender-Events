@@ -1,8 +1,8 @@
 import { state, saveToStorage } from './state.js';
 import { showMessage, getReminderDisplayText } from './utils.js';
-import { renderCalendar } from './calendar.js'; // This now handles both Grid + Slots List
+import { renderCalendar } from './calendar.js';
 
-// --- Reminders Logic (Unchanged) ---
+// --- Reminders Logic ---
 export function renderReminders() {
     const el = document.getElementById('reminders-list');
     if (!el) return;
@@ -60,7 +60,7 @@ export function deleteEvent(id) {
     state.events = state.events.filter(e => e.id !== id);
     if (state.editingEventId === id) resetFormState();
     saveToStorage();
-    renderCalendar(); // Updates the UI
+    renderCalendar();
     showMessage('Event removed.');
 }
 
@@ -111,8 +111,10 @@ export function handleEventSubmit(e) {
     let end = document.getElementById('event-datetime-end').value;
 
     if (!name || !start) { showMessage('Name and Start Time required.', 'error'); return; }
-    if (!end) end = start;
-    else if (new Date(start) > new Date(end)) { showMessage('End date cannot be before start.', 'error'); return; }
+    if (!end) end = start; // Default end to start time
+    
+    // Simple date validation
+    if (new Date(start) > new Date(end)) { showMessage('End date cannot be before start.', 'error'); return; }
 
     const eventData = {
         name,
@@ -139,7 +141,7 @@ export function handleEventSubmit(e) {
     }
 
     saveToStorage();
-    renderCalendar(); // Refreshes grid and slots
+    renderCalendar();
 }
 
 export function toggleClearModal(show) {
@@ -162,14 +164,21 @@ export function executeClearAll() {
     showMessage(`Cleared ${count} events.`);
 }
 
-// Notification Checker
+// --- Notification System (Fixed) ---
+let lastCheckTime = new Date();
+
 setInterval(() => {
     if (Notification.permission !== 'granted') return;
+    
     const now = new Date();
+    
     state.events.forEach(event => {
         const start = new Date(event.datetimeStart);
+        
         event.reminders.forEach(reminder => {
             let triggerTime = new Date(start);
+            
+            // Parse ISO Duration
             if (reminder.includes('PT')) {
                 const match = reminder.match(/PT(\d+)([MH])/);
                 if (match) {
@@ -181,13 +190,17 @@ setInterval(() => {
                 const match = reminder.match(/P(\d+)D/);
                 if (match) triggerTime.setDate(start.getDate() - parseInt(match[1]));
             }
-            if (now.getFullYear() === triggerTime.getFullYear() &&
-                now.getMonth() === triggerTime.getMonth() &&
-                now.getDate() === triggerTime.getDate() &&
-                now.getHours() === triggerTime.getHours() &&
-                now.getMinutes() === triggerTime.getMinutes()) {
-                new Notification(`Upcoming Event: ${event.name}`, { body: `Starting at ${start.toLocaleTimeString()}`, icon: 'assets/favicon.jpg' });
+            
+            // Check if triggerTime falls between lastCheckTime and now
+            // This handles missed checks due to sleep/throttling
+            if (triggerTime > lastCheckTime && triggerTime <= now) {
+                new Notification(`Upcoming Event: ${event.name}`, { 
+                    body: `Starting at ${start.toLocaleTimeString()}`, 
+                    icon: 'assets/favicon.jpg' 
+                });
             }
         });
     });
-}, 60000);
+    
+    lastCheckTime = now; // Update last check
+}, 10000); // Check every 10 seconds (more frequent is better for range checks)
