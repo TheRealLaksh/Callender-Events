@@ -1,16 +1,18 @@
 import { getGoogleAccessToken } from './googleAuth.js';
 import { state, saveToStorage } from './state.js';
+import { renderCalendar, renderEventSlots } from './calendar.js';
 
-// Sync single event to Google Calendar and mark it synced
+// Sync single event to Google Calendar (Create or Update)
 export async function syncEventToGoogle(eventId) {
     const token = getGoogleAccessToken();
     if (!token) {
-        console.warn('No Google token');
+        console.warn('Sync skipped: No Google token');
         return null;
     }
     const ev = state.events.find(e => e.id === eventId);
     if (!ev) return null;
 
+    // Construct Payload
     const payload = {
         summary: ev.name,
         description: ev.description || '',
@@ -19,25 +21,51 @@ export async function syncEventToGoogle(eventId) {
     };
 
     try {
-        const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-            method: 'POST',
+        let url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+        let method = 'POST';
+
+        // Update logic
+        if (ev.googleEventId) {
+            url += `/${ev.googleEventId}`;
+            // Use PATCH instead of PUT to avoid wiping other fields (attendees, meet links)
+            method = 'PATCH'; 
+        }
+
+        const res = await fetch(url, {
+            method: method,
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-        const json = await res.json();
-        if (json && json.id) {
-            ev.googleEventId = json.id;
-            ev.synced = true;
-            saveToStorage();
-            return json;
-        } else {
-            console.error('Failed to sync:', json);
+
+        // Handle 404/410 (Event deleted on server)
+        if (res.status === 404 || res.status === 410) {
+            console.warn('Event deleted on Google. Re-creating link...');
+            ev.googleEventId = null; // Clear ID to trigger a fresh POST next time
             ev.synced = false;
             saveToStorage();
             return null;
         }
+
+        if (!res.ok) {
+            const err = await res.json();
+            console.error('Sync failed:', err);
+            ev.synced = false;
+            saveToStorage();
+            return null;
+        }
+
+        const json = await res.json();
+        
+        // Update local state with confirmed ID
+        if (json && json.id) {
+            ev.googleEventId = json.id;
+            ev.synced = true;
+            saveToStorage();
+            renderCalendar(); // Update UI (dot indicator)
+            return json;
+        }
     } catch (err) {
-        console.error('Error syncing to Google:', err);
+        console.error('Network error syncing to Google:', err);
         ev.synced = false;
         saveToStorage();
         return null;
@@ -47,41 +75,89 @@ export async function syncEventToGoogle(eventId) {
 // Import events from Google Calendar (primary) and merge into local state
 export async function importAllFromGoogle() {
     const token = getGoogleAccessToken();
-    if (!token) {
-        console.warn('No Google token for import');
-        return [];
-    }
+    if (!token) return [];
 
     try {
         const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent('1970-01-01T00:00:00Z')}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
+        
         const json = await res.json();
         const items = Array.isArray(json.items) ? json.items : [];
-        let imported = 0;
+        let hasChanges = false;
+
         items.forEach(it => {
-            // map google event to local event shape
-            const start = it.start?.dateTime || it.start?.date;
-            const end = it.end?.dateTime || it.end?.date;
+            // 1. Parse Dates
+            let start = it.start?.dateTime;
+            let end = it.end?.dateTime;
+
+            // Handle All-Day events (YYYY-MM-DD)
+            // Convert to local ISO to prevent timezone shifts
+            if (!start && it.start?.date) {
+                const parts = it.start.date.split('-'); 
+                start = new Date(parts[0], parts[1] - 1, parts[2]).toISOString();
+            }
+            if (!end && it.end?.date) {
+                const parts = it.end.date.split('-');
+                end = new Date(parts[0], parts[1] - 1, parts[2]).toISOString();
+            }
+
             if (!start || !end) return;
-            const exists = state.events.find(e => e.googleEventId === it.id);
-            if (!exists) {
+
+            // 2. Check for Zombies (Events locally deleted but present on Google)
+            const isTrashed = state.trash.some(trashEv => trashEv.googleEventId === it.id);
+            if (isTrashed) return; 
+
+            // 3. Find existing
+            const existingIdx = state.events.findIndex(e => e.googleEventId === it.id);
+            
+            if (existingIdx === -1) {
+                // CREATE LOCAL
                 const newId = state.eventIdCounter++;
                 const local = {
                     id: newId,
-                    name: it.summary || 'Imported',
+                    name: it.summary || '(No Title)',
                     description: it.description || '',
-                    datetimeStart: new Date(start).toISOString(),
-                    datetimeEnd: new Date(end).toISOString(),
+                    datetimeStart: start,
+                    datetimeEnd: end,
                     googleEventId: it.id,
-                    synced: true
+                    synced: true,
+                    color: null,
+                    reminders: []
                 };
                 state.events.push(local);
-                imported++;
+                hasChanges = true;
+            } else {
+                // UPDATE LOCAL (Server Wins Strategy)
+                const existing = state.events[existingIdx];
+
+                // Do NOT overwrite local events if they have pending changes (synced === false)
+                // If synced is false, we skip this update and let pushUnsyncedEvents handle it.
+                if (existing.synced) {
+                    // Only update if something actually changed on server
+                    if (existing.name !== it.summary || 
+                        existing.datetimeStart !== start || 
+                        existing.datetimeEnd !== end) {
+                        
+                        state.events[existingIdx] = {
+                            ...existing, // Keep local fields
+                            name: it.summary || '(No Title)',
+                            description: it.description || existing.description,
+                            datetimeStart: start,
+                            datetimeEnd: end,
+                            synced: true
+                        };
+                        hasChanges = true;
+                    }
+                }
             }
         });
-        if (imported > 0) {
+
+        if (hasChanges) {
             saveToStorage();
+            renderCalendar();
+            renderEventSlots();
+            console.log('Synced with Google Calendar');
         }
         return items;
     } catch (err) {
@@ -98,22 +174,35 @@ export async function pushUnsyncedEvents() {
     }
 }
 
-// Auto sync handler for app saved events (called via window event)
+// Real Debounce Map to prevent race conditions
+const syncTimers = {};
+
 export function registerAutoSync() {
     window.addEventListener('app:eventSaved', async (ev) => {
-        const { id, action } = ev.detail || {};
+        const { id } = ev.detail || {};
         if (!id) return;
-        // For create or update, attempt to sync the event
-        setTimeout(() => {
+        
+        // Clear pending timer for this specific event
+        if (syncTimers[id]) {
+            clearTimeout(syncTimers[id]);
+        }
+
+        // Set new timer
+        syncTimers[id] = setTimeout(() => {
             syncEventToGoogle(id);
-        }, 1000); // small debounce
+            delete syncTimers[id];
+        }, 2000); 
     });
 }
 
-// Background sync loop (import + push)
+// Background sync loop
 let _bgHandle = null;
-export function startBackgroundSync(intervalMs = 10 * 60 * 1000) {
+export function startBackgroundSync(intervalMs = 60 * 1000) { 
     if (_bgHandle) clearInterval(_bgHandle);
+    
+    // Initial sync
+    importAllFromGoogle().then(pushUnsyncedEvents);
+
     _bgHandle = setInterval(async () => {
         try {
             await importAllFromGoogle();
@@ -124,7 +213,6 @@ export function startBackgroundSync(intervalMs = 10 * 60 * 1000) {
     }, intervalMs);
 }
 
-// One-time initialization to start listening for app events
 export function initGoogleSync() {
     registerAutoSync();
 }

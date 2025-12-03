@@ -8,19 +8,28 @@ export function initFallingPattern() {
     let width, height;
     let columns = [];
     const fontSize = 14;
-    
+
     // Configuration
     const color = '#818cf8'; // Tailwind Indigo-400
     const speed = 0.5; // Slower for background elegance
 
     function resize() {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-        
-        // Calculate columns based on width
+        const dpr = window.devicePixelRatio || 1;
+        width = window.innerWidth;
+        height = window.innerHeight;
+
+        // Scale the canvas for high DPI
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+
+        // Scale it back down via CSS
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+
+        // Normalize the context to use logical pixels
+        ctx.scale(dpr, dpr);
+
         const columnCount = Math.ceil(width / fontSize);
-        
-        // Initialize columns with random Y starting positions
         columns = Array(columnCount).fill(0).map(() => Math.random() * -height);
     }
 
@@ -34,7 +43,7 @@ export function initFallingPattern() {
 
         for (let i = 0; i < columns.length; i++) {
             // Random character (0 or 1, or abstract chars)
-            const text = Math.random() > 0.5 ? '1' : '0'; 
+            const text = Math.random() > 0.5 ? '1' : '0';
             const x = i * fontSize;
             const y = columns[i];
 

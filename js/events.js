@@ -1,6 +1,27 @@
 import { state, saveToStorage } from './state.js';
 import { showMessage, getReminderDisplayText, isValidDate } from './utils.js';
 import { renderCalendar, renderEventSlots } from './calendar.js'; 
+import { syncEventToGoogle } from "./googleCalendarSync.js";
+
+// --- Initialization ---
+// FIX: Exported initialization function to be called from main.js to prevent "element null" crash
+export function initEventUI() {
+    const syncBtn = document.getElementById("sync-google");
+    if (syncBtn) {
+        syncBtn.onclick = () => {
+            if (state.editingEventId) {
+                // FIX: Add user feedback for sync action
+                syncEventToGoogle(state.editingEventId)
+                    .then(res => {
+                        if(res) showMessage('Synced successfully!', 'success');
+                        else showMessage('Sync failed. Check console.', 'error');
+                    });
+            } else {
+                showMessage('Please save the event first.', 'error');
+            }
+        };
+    }
+}
 
 // --- Reminders Logic ---
 export function renderReminders() {
@@ -8,6 +29,12 @@ export function renderReminders() {
     if (!el) return;
 
     el.innerHTML = '';
+    
+    // Safety check for array existence
+    if (!Array.isArray(state.currentReminders)) {
+        state.currentReminders = [];
+    }
+
     state.currentReminders.forEach((duration, index) => {
         const span = document.createElement('span');
         span.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-semibold';
@@ -17,11 +44,20 @@ export function renderReminders() {
                 &times;
             </button>
         `;
-        span.querySelector('button').onclick = () => removeReminder(index);
+        
+        // FIX: Safer event handling using closure
+        const btn = span.querySelector('button');
+        if (btn) {
+            btn.onclick = (e) => {
+                e.stopPropagation(); // Prevent bubbling
+                removeReminder(index);
+            };
+        }
         el.appendChild(span);
     });
 
     const area = document.getElementById('reminder-selection-area');
+    // Logic: Hide the selection buttons if a reminder exists (optional UX choice)
     if (state.currentReminders.length > 0 && area) area.classList.add('hidden');
 }
 
@@ -37,8 +73,12 @@ export function addCustomReminder() {
     const input = document.getElementById('custom-reminder-value');
     const unit = document.getElementById('custom-reminder-unit').value;
     const val = parseInt(input.value);
+    
     if (val > 0) {
-        addReminderToForm(unit === 'D' ? `-P${val}D` : `-PT${val}${unit}`);
+        // Construct ISO 8601 Duration
+        // Days = -P<n>D, Time = -PT<n><unit>
+        const isoDuration = unit === 'D' ? `-P${val}D` : `-PT${val}${unit}`;
+        addReminderToForm(isoDuration);
         input.value = '';
     } else {
         showMessage('Please enter a valid number.', 'error');
@@ -60,6 +100,9 @@ export function deleteEvent(id) {
     const ev = state.events.find(e => e.id === id);
     if (ev) {
         state.trash.push(ev); // Add to trash
+        // Note: If event is synced, it will be "resurrected" by Google Sync unless deleted there too.
+        // Future Todo: Implement deleteEventFromGoogle(ev.googleEventId) here.
+        
         state.events = state.events.filter(e => e.id !== id);
         
         if (state.editingEventId === id) resetFormState();
@@ -88,7 +131,15 @@ export function duplicateEvent(id) {
     const original = state.events.find(e => e.id === id);
     if (!original) return;
     const newId = state.eventIdCounter++;
-    state.events.push({ ...original, id: newId, name: original.name + " (Copy)", reminders: [...original.reminders] });
+    // Create copy, ensuring we strip the Google ID so it treats it as a new event
+    state.events.push({ 
+        ...original, 
+        id: newId, 
+        name: original.name + " (Copy)", 
+        reminders: [...original.reminders],
+        googleEventId: null, // Important: Don't link to the same Google Event
+        synced: false
+    });
     saveToStorage();
     renderCalendar();
     renderEventSlots();
@@ -116,6 +167,7 @@ export function editEvent(id) {
     renderReminders();
 
     const btn = document.getElementById('submit-btn');
+    // Updated button text/icon
     btn.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> Update Event`;
 
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth' });
@@ -157,17 +209,31 @@ export function handleEventSubmit(e) {
         datetimeEnd: end,
         timezone: document.getElementById('event-timezone').value,
         description: document.getElementById('event-description').value.trim(),
-        reminders: [...state.currentReminders]
+        reminders: [...state.currentReminders],
+        // Note: We don't change googleEventId here; syncing happens separately
+        synced: false // Mark as unsynced so background sync picks it up
     };
 
     if (state.editingEventId !== null) {
         const idx = state.events.findIndex(ev => ev.id === state.editingEventId);
-        if (idx !== -1) state.events[idx] = { ...state.events[idx], ...eventData };
+        if (idx !== -1) {
+            // Keep existing ID and Google ID
+            const existing = state.events[idx];
+            state.events[idx] = { 
+                ...existing, 
+                ...eventData,
+                synced: false // Modified, needs sync
+            };
+        }
         showMessage('Event updated.');
         resetFormState();
     } else {
         const newId = state.eventIdCounter++;
-        state.events.push({ id: newId, ...eventData });
+        state.events.push({ 
+            id: newId, 
+            ...eventData,
+            synced: false 
+        });
         showMessage('Event added.');
         
         const newEventDate = new Date(start);
@@ -180,6 +246,9 @@ export function handleEventSubmit(e) {
     saveToStorage();
     renderCalendar(); 
     renderEventSlots(); 
+    
+    // Trigger auto-sync attempt
+    window.dispatchEvent(new CustomEvent('app:eventSaved', { detail: { id: state.editingEventId || (state.eventIdCounter - 1) } }));
 }
 
 export function toggleClearModal(show) {
@@ -191,8 +260,16 @@ export function toggleClearModal(show) {
     }
 
     document.getElementById('events-to-clear-count').textContent = state.events.length;
-    modal.classList.toggle(show ? 'flex' : 'hidden', show);
-    modal.classList.toggle('hidden', !show);
+    
+    // FIX: Simplified and robust class toggling
+    // Previously, we had conflicting toggle logic. Now we explicitly set the state.
+    if (show) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    } else {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
 }
 
 export function executeClearAll() {
@@ -201,7 +278,7 @@ export function executeClearAll() {
     state.trash = []; 
     resetFormState();
     renderCalendar();
-    renderEventSlots(); // Added this to clear the list view too
+    renderEventSlots(); 
     toggleClearModal(false);
     saveToStorage();
     showMessage(`Cleared ${count} events.`);
@@ -250,7 +327,6 @@ setInterval(() => {
 export function parseNaturalLanguage(input) {
     const now = new Date();
     // Basic Regex for "EventName at HH:MM" or "at HH:MM EventName"
-    // Example: "Meeting at 14:30"
     const timeMatch = input.match(/at (\d{1,2})(:(\d{2}))?\s*(am|pm)?/i);
     
     if (timeMatch) {
@@ -282,10 +358,3 @@ export function parseNaturalLanguage(input) {
         showMessage("Time detected from input!", "success");
     }
 }
-import { syncEventToGoogle } from "./googleCalendarSync.js";
-
-document.getElementById("sync-google").onclick = () => {
-    if (state.editingEventId) {
-        syncEventToGoogle(state.editingEventId);
-    }
-};

@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/png" href="assets/favicon.jpg">
+    <meta name="theme-color" content="#818cf8">
+    <link rel="icon" type="image/jpeg" href="assets/favicon.jpg">
     <title>Calibridge - Calendar Bridge</title>
     <meta name="description" content="Calibridge: Modern, privacy-first calendar event manager.">
     <link rel="manifest" href="manifest.json">
@@ -16,11 +17,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
 
-    <script src="js/googleAuth.js"></script>
     <script>
-        window.onload = () => {
-            initGoogleSignIn();
-        };
+        (function () {
+            try {
+                const storedTheme = localStorage.getItem('theme');
+                if (storedTheme === 'light') {
+                    document.documentElement.classList.remove('dark');
+                } else {
+                    document.documentElement.classList.add('dark');
+                }
+            } catch (e) { }
+        })();
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -77,12 +84,16 @@
                 display: none !important;
             }
 
-            main {
-                grid-template-columns: 1fr;
+            /* Reset grid for print */
+            .parent {
+                display: block !important;
             }
 
-            .lg\:col-span-8 {
-                grid-column: span 12;
+            .div2,
+            .div3,
+            .div4 {
+                width: 100% !important;
+                margin-bottom: 20px;
             }
 
             #calendar-grid {
@@ -93,9 +104,7 @@
             #calendar-grid>button {
                 border: 1px solid #eee;
                 color: black;
-                aspect-ratio: auto;
                 height: 100px;
-                align-items: flex-start;
                 padding: 4px;
             }
 
@@ -123,10 +132,9 @@
             background: #475569;
         }
 
-        /* Custom styling to match Flatpickr with Tailwind Indigo */
-        .flatpickr-calendar.dark {
+        /* Flatpickr Customization */
+        .flatpickr-calendar {
             background: #1e293b;
-            /* slate-800 */
             border: 1px solid #334155;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
         }
@@ -150,7 +158,6 @@
         .flatpickr-day.startRange.nextMonthDay,
         .flatpickr-day.endRange.nextMonthDay {
             background: #818cf8;
-            /* Tailwind Primary */
             border-color: #818cf8;
             color: #0f172a;
             font-weight: bold;
@@ -158,7 +165,6 @@
 
         .flatpickr-months .flatpickr-month {
             background: #0f172a;
-            /* slate-950 */
             color: #fff;
         }
 
@@ -177,15 +183,53 @@
         .flatpickr-time .flatpickr-am-pm:focus {
             background: #334155;
         }
+
+        /* --- USER CUSTOM GRID SYSTEM (Desktop Only) --- */
+        @media (min-width: 1024px) {
+            .parent {
+                display: grid;
+                grid-template-columns: repeat(12, 1fr);
+                grid-template-rows: repeat(12, 1fr);
+                gap: 20px;
+                /* Increased slightly from 8px for better UI breathing room */
+                min-height: 800px;
+                /* Ensure strictly defined rows have height to stretch */
+            }
+
+            .div2 {
+                grid-column: 2 / span 3;
+                /* Fixed syntax: start / span */
+                grid-row: 2 / span 7;
+            }
+
+            .div3 {
+                grid-column: 6 / span 6;
+                grid-row: 2 / span 7;
+            }
+
+            .div4 {
+                grid-column: 2 / span 10;
+                grid-row: 10 / span 2;
+            }
+        }
+
+        /* Mobile Fallback: Stack them */
+        @media (max-width: 1023px) {
+            .parent {
+                display: flex;
+                flex-direction: column;
+                gap: 2rem;
+            }
+        }
     </style>
 </head>
 
 <body
-    class="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-primary/30 selection:text-primary relative overflow-x-hidden">
+    class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-primary/30 selection:text-primary relative overflow-x-hidden transition-colors duration-300">
 
     <div class="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <canvas id="falling-pattern-canvas" class="absolute inset-0 w-full h-full opacity-30"></canvas>
-        <div class="absolute inset-0 bg-slate-950/80"
+        <div class="absolute inset-0 bg-white/80 dark:bg-slate-950/80"
             style="mask-image: radial-gradient(ellipse at center, transparent 20%, black 100%); -webkit-mask-image: radial-gradient(ellipse at center, transparent 20%, black 100%);">
         </div>
     </div>
@@ -193,32 +237,35 @@
     <div id="app" class="relative z-10 max-w-7xl mx-auto p-4 md:p-8 flex flex-col gap-8">
 
         <header class="text-center py-6 animate-fade-in">
-            <h1 class="text-5xl md:text-7xl font-display font-bold mb-2 tracking-tight text-white">
+            <h1 class="text-5xl md:text-7xl font-display font-bold mb-2 tracking-tight text-slate-900 dark:text-white">
                 Cali<span
                     class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-purple-400">bridge</span>
             </h1>
-            <p class="text-lg text-slate-400 font-light">Seamlessly Bridge Your Calendar Events</p>
+            <p class="text-lg text-slate-500 dark:text-slate-400 font-light">Seamlessly Bridge Your Calendar Events</p>
             <div class="flex flex-wrap justify-between items-center gap-4 px-4 animate-fade-in">
                 <div class="relative group w-full md:w-64">
-                    <input type="text" id="search-input" placeholder="Search events..."
-                        class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary outline-none text-sm text-white transition-all">
-                    <svg class="w-4 h-4 text-slate-500 absolute right-3 top-3" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
+                    <input type="text" id="search-input" placeholder="Search events..." autocomplete="off"
+                        class="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary outline-none text-sm text-slate-900 dark:text-white transition-all shadow-sm">
+                    <svg class="w-4 h-4 text-slate-400 dark:text-slate-500 absolute right-3 top-3" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                 </div>
+
                 <div id="google-login"></div>
 
-                <div class="flex gap-2 bg-slate-900/50 p-1 rounded-xl border border-slate-700">
+                <div
+                    class="flex gap-2 bg-white dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <button onclick="changeView('month')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-slate-900"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-white dark:text-slate-900"
                         id="view-month-btn">Month</button>
                     <button onclick="changeView('week')"
-                        class="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-800 text-slate-300 transition"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition"
                         id="view-week-btn">Week</button>
                     <button onclick="toggleTheme()"
-                        class="p-1.5 hover:bg-slate-800 rounded-lg text-yellow-400 transition" title="Toggle Theme">
+                        class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-yellow-500 dark:text-yellow-400 transition"
+                        title="Toggle Theme">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
@@ -230,34 +277,40 @@
         </header>
 
         <div
-            class="relative w-full overflow-hidden bg-slate-900/60 border-y border-slate-800 backdrop-blur-sm py-2 rounded-lg shadow-sm">
+            class="relative w-full overflow-hidden bg-white/60 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 backdrop-blur-sm py-2 rounded-lg shadow-sm mb-4">
             <div class="flex animate-marquee whitespace-nowrap items-center">
                 <div class="flex gap-12 px-6 min-w-full justify-around">
-                    <span class="text-sm font-medium text-indigo-400">★ Google Calendar Ready</span>
-                    <span class="text-sm font-medium text-emerald-400">★ Outlook Compatible</span>
-                    <span class="text-sm font-medium text-indigo-400">★ Notion Integration</span>
-                    <span class="text-sm font-medium text-emerald-400">★ Time Zone Flexible</span>
-                    <span class="text-sm font-medium text-indigo-400">★ Import/Export .ics Files</span>
-                    <span class="text-sm font-medium text-emerald-400">★ Premium Dark Mode</span>
-                    <span class="text-sm font-medium text-indigo-400">★ Apple Calendar Ready</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Google Calendar
+                        Ready</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Outlook Compatible</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Notion Integration</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Time Zone Flexible</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Import/Export .ics
+                        Files</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Premium Dark Mode</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Apple Calendar Ready</span>
                 </div>
                 <div class="flex gap-12 px-6 min-w-full justify-around" aria-hidden="true">
-                    <span class="text-sm font-medium text-indigo-400">★ Google Calendar Ready</span>
-                    <span class="text-sm font-medium text-emerald-400">★ Outlook Compatible</span>
-                    <span class="text-sm font-medium text-indigo-400">★ Notion Integration</span>
-                    <span class="text-sm font-medium text-emerald-400">★ Time Zone Flexible</span>
-                    <span class="text-sm font-medium text-indigo-400">★ Import/Export .ics Files</span>
-                    <span class="text-sm font-medium text-emerald-400">★ Premium Dark Mode</span>
-                    <span class="text-sm font-medium text-indigo-400">★ Apple Calendar Ready</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Google Calendar
+                        Ready</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Outlook Compatible</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Notion Integration</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Time Zone Flexible</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Import/Export .ics
+                        Files</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Premium Dark Mode</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Apple Calendar Ready</span>
                 </div>
             </div>
         </div>
 
-        <main class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div class="parent">
 
-            <section class="lg:col-span-4 lg:sticky lg:top-8 space-y-6 animate-slide-up">
-                <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl">
-                    <h2 class="text-2xl font-display font-bold text-white mb-6 flex items-center gap-2">
+            <div class="div2 animate-slide-up">
+                <div
+                    class="bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl transition-colors h-full flex flex-col">
+                    <h2
+                        class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
                         <span class="bg-primary/10 text-primary p-2 rounded-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor">
@@ -268,23 +321,24 @@
                         New Event
                     </h2>
 
-                    <form id="event-form" class="space-y-5">
+                    <form id="event-form" class="space-y-5 flex-1" autocomplete="off">
                         <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Event
+                            <label for="event-name"
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Event
                                 Name</label>
                             <input type="text" id="event-name" required
-                                class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-slate-600"
+                                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
                                 placeholder="e.g., Team Meeting">
                         </div>
 
                         <div class="grid grid-cols-1 gap-4">
                             <div class="space-y-1.5">
-                                <label
-                                    class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Starts</label>
+                                <label for="event-datetime-start"
+                                    class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Starts</label>
                                 <div class="relative group">
                                     <input type="text" id="event-datetime-start" placeholder="Select date & time..."
-                                        class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10 cursor-pointer">
-                                    <svg class="w-5 h-5 text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
+                                        class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10 cursor-pointer">
+                                    <svg class="w-5 h-5 text-slate-400 dark:text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -292,12 +346,12 @@
                                 </div>
                             </div>
                             <div class="space-y-1.5">
-                                <label
-                                    class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ends</label>
+                                <label for="event-datetime-end"
+                                    class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ends</label>
                                 <div class="relative group">
                                     <input type="text" id="event-datetime-end" placeholder="Select date & time..."
-                                        class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10 cursor-pointer">
-                                    <svg class="w-5 h-5 text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
+                                        class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none transition-all pr-10 cursor-pointer">
+                                    <svg class="w-5 h-5 text-slate-400 dark:text-slate-500 absolute right-3 top-3.5 pointer-events-none group-focus-within:text-primary transition-colors"
                                         fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -307,10 +361,11 @@
                         </div>
 
                         <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Time
+                            <label for="event-timezone"
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Time
                                 Zone</label>
                             <select id="event-timezone"
-                                class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none appearance-none">
+                                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none appearance-none">
                                 <option value="Asia/Kolkata">IST (Kolkata)</option>
                                 <option value="America/New_York">EST (New York)</option>
                                 <option value="Europe/London">GMT (London)</option>
@@ -321,10 +376,11 @@
                             </select>
                         </div>
 
-                        <div class="space-y-3 p-4 border border-slate-700 bg-slate-950/50 rounded-xl">
+                        <div
+                            class="space-y-3 p-4 border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950/50 rounded-xl">
                             <div class="flex justify-between items-center">
                                 <label
-                                    class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Reminders</label>
+                                    class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Reminders</label>
                                 <button type="button" onclick="toggleReminderArea()"
                                     class="text-xs text-primary hover:text-primary-hover font-medium flex items-center gap-1">
                                     <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -335,26 +391,26 @@
                             </div>
                             <div id="reminders-list" class="flex flex-wrap gap-2 empty:hidden"></div>
                             <div id="reminder-selection-area"
-                                class="hidden pt-3 border-t border-slate-700/50 animate-fade-in">
+                                class="hidden pt-3 border-t border-slate-200 dark:border-slate-700/50 animate-fade-in">
                                 <div class="grid grid-cols-3 gap-2 mb-3">
                                     <button type="button" onclick="addReminderToForm('-PT5M')"
-                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">5m</button>
+                                        class="px-2 py-1.5 text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition">5m</button>
                                     <button type="button" onclick="addReminderToForm('-PT15M')"
-                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">15m</button>
+                                        class="px-2 py-1.5 text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition">15m</button>
                                     <button type="button" onclick="addReminderToForm('-PT1H')"
-                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">1h</button>
+                                        class="px-2 py-1.5 text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition">1h</button>
                                     <button type="button" onclick="addReminderToForm('-PT2H')"
-                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">2h</button>
+                                        class="px-2 py-1.5 text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition">2h</button>
                                     <button type="button" onclick="addReminderToForm('-P1D')"
-                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">1d</button>
+                                        class="px-2 py-1.5 text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition">1d</button>
                                     <button type="button" onclick="addReminderToForm('-P2D')"
-                                        class="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition">2d</button>
+                                        class="px-2 py-1.5 text-xs bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition">2d</button>
                                 </div>
                                 <div class="flex gap-2">
                                     <input type="number" id="custom-reminder-value" placeholder="#"
-                                        class="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm text-center focus:border-primary outline-none">
+                                        class="w-16 bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-sm text-center focus:border-primary outline-none">
                                     <select id="custom-reminder-unit"
-                                        class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm flex-1 focus:border-primary outline-none">
+                                        class="bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-sm flex-1 focus:border-primary outline-none">
                                         <option value="M">Mins</option>
                                         <option value="H">Hours</option>
                                         <option value="D">Days</option>
@@ -367,9 +423,9 @@
 
                         <div class="space-y-4">
                             <input type="text" id="event-location" placeholder="Location (e.g. Zoom)"
-                                class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-sm">
+                                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-sm">
                             <textarea id="event-description" rows="2" placeholder="Notes or description..."
-                                class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-sm"></textarea>
+                                class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary outline-none text-sm"></textarea>
                         </div>
 
                         <button type="submit" id="submit-btn"
@@ -380,42 +436,45 @@
                             </svg> Add Event
                         </button>
                     </form>
-                    <button id="sync-google"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition-shadow shadow-lg">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg> Sync to Google
-                    </button>
-                    <button id="import-google"
-                        class="ml-3 inline-flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/5 text-sm text-slate-200 border border-white/6 hover:bg-white/6 transition">
-                        Import from Google
-                    </button>
 
-
+                    <div
+                        class="flex flex-col sm:flex-row gap-3 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <button id="sync-google"
+                            class="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold hover:from-blue-700 hover:to-indigo-700 transition-shadow shadow-lg text-sm">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg> Sync to Google
+                        </button>
+                        <button id="import-google"
+                            class="flex-1 inline-flex justify-center items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 dark:bg-white/5 text-sm text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-white/6 hover:bg-slate-200 dark:hover:bg-white/6 transition">
+                            Import Google
+                        </button>
+                    </div>
                 </div>
-            </section>
+            </div>
 
-            <section class="lg:col-span-8 space-y-6 animate-slide-up w-full" style="animation-delay: 0.1s;">
-
+            <div class="div3 animate-slide-up" style="animation-delay: 0.1s;">
                 <div
-                    class="max-w-xl mx-auto bg-slate-900/90 border border-slate-800 rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden">
-
-                    <div class="p-5 md:p-6">
+                    class="max-w-xl mx-auto bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl backdrop-blur-xl overflow-hidden transition-colors h-full flex flex-col">
+                    <div class="p-5 md:p-6 flex-1">
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                             <h2 id="month-year-display"
-                                class="text-3xl font-display font-bold text-white tracking-tight"></h2>
-                            <div class="flex items-center bg-slate-950 rounded-lg p-1 border border-slate-800">
+                                class="text-3xl font-display font-bold text-slate-900 dark:text-white tracking-tight">
+                            </h2>
+                            <div
+                                class="flex items-center bg-slate-100 dark:bg-slate-950 rounded-lg p-1 border border-slate-200 dark:border-slate-800">
                                 <button id="prev-month-btn"
-                                    class="p-2 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition">
+                                    class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M15 19l-7-7 7-7" />
                                     </svg>
                                 </button>
                                 <button id="today-btn"
-                                    class="px-4 py-1 text-sm font-semibold text-slate-300 hover:text-white transition">Today</button>
+                                    class="px-4 py-1 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition">Today</button>
                                 <button id="next-month-btn"
-                                    class="p-2 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition">
+                                    class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
                                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M9 5l7 7-7 7" />
@@ -425,23 +484,39 @@
                         </div>
 
                         <div class="grid grid-cols-7 mb-2 text-center">
-                            <div class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Sun</div>
-                            <div class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Mon</div>
-                            <div class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Tue</div>
-                            <div class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Wed</div>
-                            <div class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Thu</div>
-                            <div class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Fri</div>
-                            <div class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Sat</div>
+                            <div
+                                class="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-widest uppercase">
+                                Sun</div>
+                            <div
+                                class="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-widest uppercase">
+                                Mon</div>
+                            <div
+                                class="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-widest uppercase">
+                                Tue</div>
+                            <div
+                                class="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-widest uppercase">
+                                Wed</div>
+                            <div
+                                class="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-widest uppercase">
+                                Thu</div>
+                            <div
+                                class="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-widest uppercase">
+                                Fri</div>
+                            <div
+                                class="text-slate-400 dark:text-slate-500 text-[10px] font-bold tracking-widest uppercase">
+                                Sat</div>
                         </div>
 
                         <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
                     </div>
 
-                    <div class="border-t border-slate-800 p-6 bg-slate-950/30">
+                    <div
+                        class="border-t border-slate-200 dark:border-slate-800 p-6 bg-slate-50/50 dark:bg-slate-950/30">
                         <div class="flex justify-between items-center mb-4">
-                            <div id="selected-date-display" class="text-sm font-medium text-white">Select a date</div>
+                            <div id="selected-date-display" class="text-sm font-medium text-slate-800 dark:text-white">
+                                Select a date</div>
                             <button onclick="document.getElementById('event-name').focus()"
-                                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition"
+                                class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition"
                                 title="Add Event">
                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -449,101 +524,107 @@
                                 </svg>
                             </button>
                         </div>
+                        <div id="event-slots-container" class="space-y-2"></div>
+                    </div>
 
-                        <div id="event-slots-container" class="space-y-2">
+                    <div
+                        class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-wrap gap-3">
+                        <input type="file" id="ics-file-input" accept=".ics" class="hidden"
+                            onchange="window.importICS && window.importICS(event)">
+                        <button onclick="document.getElementById('ics-file-input').click()"
+                            class="flex-1 px-4 py-2 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium border border-slate-200 dark:border-slate-700 transition flex items-center justify-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg> Import
+                        </button>
+
+                        <div class="flex-1 flex gap-2">
+                            <input type="text" id="export-file-name" placeholder="File name"
+                                class="w-full bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-4 py-2 text-xs outline-none focus:border-primary transition">
+                            <button id="export-btn"
+                                class="px-4 py-2 bg-secondary hover:bg-secondary-hover text-slate-950 font-bold rounded-xl text-xs transition">Export</button>
                         </div>
+
+                        <button id="clear-all-btn"
+                            class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 rounded-xl text-xs font-medium transition">Clear</button>
                     </div>
-                </div>
-
-                <div class="max-w-xl mx-auto flex flex-wrap gap-3">
-                    <input type="file" id="ics-file-input" accept=".ics" class="hidden" onchange="importICS(event)">
-                    <button onclick="document.getElementById('ics-file-input').click()"
-                        class="flex-1 px-4 py-3 bg-slate-900/80 hover:bg-slate-800 text-slate-300 rounded-xl text-sm font-medium border border-slate-700 transition flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg> Import
-                    </button>
-
-                    <div class="flex-1 flex gap-2">
-                        <input type="text" id="export-file-name" placeholder="File name"
-                            class="w-full bg-slate-900/80 border border-slate-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:border-primary transition">
-                        <button id="export-btn"
-                            class="px-4 py-2 bg-secondary hover:bg-secondary-hover text-slate-950 font-bold rounded-xl text-sm transition">Export</button>
-                    </div>
-
-                    <button id="clear-all-btn"
-                        class="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-sm font-medium transition">
-                        Clear
-                    </button>
-                </div>
-
-            </section>
-        </main>
-
-        <section class="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 mt-8 shadow-xl backdrop-blur-xl">
-            <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <span class="text-secondary">💡</span> Quick Guide
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm text-slate-300">
-                <div
-                    class="p-4 bg-slate-900 rounded-xl border border-slate-700/50 hover:border-slate-600 transition duration-300">
-                    <strong class="block text-white mb-2 text-base">1. Add Events</strong>
-                    Fill in the details and set reminders. Supports multiple time zones.
-                </div>
-                <div
-                    class="p-4 bg-slate-900 rounded-xl border border-slate-700/50 hover:border-slate-600 transition duration-300">
-                    <strong class="block text-white mb-2 text-base">2. Export</strong>
-                    Name your file and click Export. It generates a standard .ics file.
-                </div>
-                <div
-                    class="p-4 bg-slate-900 rounded-xl border border-slate-700/50 hover:border-slate-600 transition duration-300">
-                    <strong class="block text-white mb-2 text-base">3. Import Anywhere</strong>
-                    Use the file in Google Calendar, Outlook, or Apple Calendar.
-                </div>
-                <div
-                    class="p-4 bg-slate-900 rounded-xl border border-slate-700/50 hover:border-slate-600 transition duration-300">
-                    <strong class="block text-white mb-2 text-base">4. Offline Capable</strong>
-                    Install as a PWA to access your schedule without internet.
                 </div>
             </div>
-        </section>
 
-        <section class="max-w-7xl mx-auto px-8 py-6 mt-8 border-t border-slate-800/50 text-slate-400 text-xs">
-            <h4 class="font-bold text-slate-300 mb-3 flex items-center gap-2">⌨️ Keyboard Shortcuts</h4>
+            <div class="div4 animate-slide-up" style="animation-delay: 0.2s;">
+                <section
+                    class="bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl backdrop-blur-xl transition-colors h-full">
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <span class="text-secondary">💡</span> Quick Guide
+                    </h3>
+                    <div
+                        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-sm text-slate-600 dark:text-slate-300">
+                        <div
+                            class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600 transition duration-300">
+                            <strong class="block text-slate-900 dark:text-white mb-2 text-base">1. Add Events</strong>
+                            Fill in the details and set reminders. Supports multiple time zones.
+                        </div>
+                        <div
+                            class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600 transition duration-300">
+                            <strong class="block text-slate-900 dark:text-white mb-2 text-base">2. Export</strong>
+                            Name your file and click Export. It generates a standard .ics file.
+                        </div>
+                        <div
+                            class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600 transition duration-300">
+                            <strong class="block text-slate-900 dark:text-white mb-2 text-base">3. Import
+                                Anywhere</strong>
+                            Use the file in Google Calendar, Outlook, or Apple Calendar.
+                        </div>
+                        <div
+                            class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600 transition duration-300">
+                            <strong class="block text-slate-900 dark:text-white mb-2 text-base">4. Offline
+                                Capable</strong>
+                            Install as a PWA to access your schedule without internet.
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </div>
+
+        <section
+            class="max-w-7xl mx-auto px-8 py-6 mt-8 border-t border-slate-200 dark:border-slate-800/50 text-slate-500 dark:text-slate-400 text-xs">
+            <h4 class="font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">⌨️ Keyboard Shortcuts
+            </h4>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div><span
-                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">N</span>
+                        class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono">N</span>
                     New Event</div>
                 <div><span
-                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">/</span>
+                        class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono">/</span>
                     Search</div>
                 <div><span
-                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">Esc</span>
+                        class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono">Esc</span>
                     Close / Cancel</div>
                 <div><span
-                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">T</span>
+                        class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono">T</span>
                     Go to Today</div>
                 <div><span
-                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">←/→</span>
+                        class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono">←/→</span>
                     Navigate</div>
                 <div><span
-                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">Ctrl+P</span>
+                        class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono">Ctrl+P</span>
                     Print View</div>
                 <div><span
-                        class="bg-slate-800 px-2 py-1 rounded border border-slate-700 text-slate-200 font-mono">Ctrl+Z</span>
+                        class="bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-mono">Ctrl+Z</span>
                     Undo Delete</div>
             </div>
         </section>
 
-        <footer class="text-center text-slate-400 text-sm py-8 font-medium">
+        <footer class="text-center text-slate-500 dark:text-slate-400 text-sm py-8 font-medium">
             &copy; 2025 Calibridge. Built with Vanilla JS & Tailwind.
         </footer>
 
         <div id="confirm-clear-modal"
             class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
             <div
-                class="bg-slate-900 border border-slate-700 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl transform transition-all scale-100">
+                class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl transform transition-all scale-100">
                 <div
                     class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -551,12 +632,13 @@
                             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                 </div>
-                <h3 class="text-2xl font-bold text-white mb-2">Delete All Events?</h3>
-                <p class="text-slate-400 mb-8">This will permanently remove <span id="events-to-clear-count"
-                        class="font-bold text-white">0</span> events. This action cannot be undone.</p>
+                <h3 class="text-2xl font-bold text-slate-900 dark:text-white mb-2">Delete All Events?</h3>
+                <p class="text-slate-500 dark:text-slate-400 mb-8">This will permanently remove <span
+                        id="events-to-clear-count" class="font-bold text-slate-900 dark:text-white">0</span> events.
+                    This action cannot be undone.</p>
                 <div class="flex gap-3">
                     <button id="cancel-clear-btn"
-                        class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition">Cancel</button>
+                        class="flex-1 py-3 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-medium transition">Cancel</button>
                     <button id="execute-clear-btn"
                         class="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium transition">Yes,
                         Delete All</button>

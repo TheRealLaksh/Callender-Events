@@ -1,28 +1,39 @@
 import { loadFromStorage, state } from './state.js';
-import { renderCalendar, changeMonth, changeView } from './calendar.js'; // renderEventSlots is called internally now
+import { renderCalendar, changeMonth, changeView, renderEventSlots } from './calendar.js'; 
 import { setupExport, importICS } from './ics.js';
 import {
     renderReminders, handleEventSubmit,
     editEvent, deleteEvent, duplicateEvent, undoDelete, parseNaturalLanguage,
     addReminderToForm, addCustomReminder, removeReminder,
-    toggleReminderArea, toggleClearModal, executeClearAll
+    toggleReminderArea, toggleClearModal, executeClearAll,
+    initEventUI 
 } from './events.js';
 import { initFallingPattern } from './background.js';
 import { initGoogleSignIn } from './googleAuth.js';
 import { initGoogleSync, startBackgroundSync, importAllFromGoogle } from './googleCalendarSync.js';
 
-
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Start Background (Moved up so it always runs)
+    // 1. Start Background Animation
     initFallingPattern();
-    try { initGoogleSignIn(); initGoogleSync(); startBackgroundSync(5 * 60 * 1000); } catch (e) { console.warn('Google init skipped', e); }
-    // 2. Load Data & Initial Render
+    
+    // 2. Initialize External Services
+    try { 
+        initGoogleSignIn(); 
+        initGoogleSync(); 
+        startBackgroundSync(5 * 60 * 1000); 
+        initEventUI(); 
+    } catch (e) { 
+        console.warn('Service init warning:', e); 
+    }
+
+    // 3. Load Data & Initial Render
     loadFromStorage();
     renderReminders();
-    renderCalendar(); // Contains try-catch now
+    renderCalendar(); 
+    renderEventSlots(); 
     setupExport();
 
-    // 3. Initialize Flatpickr
+    // 4. Initialize Date Pickers (Flatpickr)
     const startFP = flatpickr("#event-datetime-start", {
         enableTime: true,
         dateFormat: "Y-m-d\\TH:i",
@@ -41,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         theme: "dark"
     });
 
-    // 4. Event Listeners
+    // 5. Event Listeners
     document.getElementById('event-form')?.addEventListener('submit', handleEventSubmit);
 
     document.getElementById('prev-month-btn')?.addEventListener('click', () => changeMonth(-1));
@@ -58,39 +69,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('execute-clear-btn')?.addEventListener('click', executeClearAll);
     document.getElementById('cancel-clear-btn')?.addEventListener('click', () => toggleClearModal(false));
 
-    // Search Listener
+    // Search Functionality
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
         searchInput.addEventListener('input', () => {
-            // We re-render the whole calendar to potentially highlight search results in the grid in future
-            // For now, we just trigger the list update logic via calendar or events
-            // Since renderEventSlots is imported in calendar.js, we rely on calendar redraw or event listeners
-            // But simpler: just import renderEventSlots here if needed, OR
-            // Trigger a custom event. For now, let's re-render the list logic.
-            const listContainer = document.getElementById('event-slots-container');
-            if (listContainer) {
-                // Dynamically import to avoid circular dep issues if strict
-                import('./calendar.js').then(module => module.renderEventSlots());
-            }
+            renderEventSlots();
         });
-        // Natural Language Trigger on Enter
+        
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 parseNaturalLanguage(e.target.value);
             }
         });
     }
-    window.addEventListener('DOMContentLoaded', () => {
-        const imp = document.getElementById('import-google');
-        if (imp) imp.onclick = async () => {
+
+    // Google Import Button
+    const imp = document.getElementById('import-google');
+    if (imp) {
+        imp.onclick = async () => {
             try {
                 await importAllFromGoogle();
-                // re-render
-                import('./events.js').then(m => { m && m.renderReminders && window.renderCalendar && window.renderEventSlots && window.renderCalendar(); });
+                renderCalendar();
+                renderEventSlots();
                 alert('Import complete');
-            } catch (e) { console.error(e); alert('Import failed'); }
+            } catch (e) { 
+                console.error(e); 
+                alert('Import failed'); 
+            }
         };
-    });
+    }
 
     // Keyboard Shortcuts
     document.addEventListener('keydown', (e) => {
@@ -110,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Swipe Gestures
+    // Swipe Gestures for Mobile
     const grid = document.getElementById('calendar-grid');
     let touchStartX = 0;
     if (grid) {
@@ -122,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
-    // SW & Notifications
+    // Service Worker & Notifications
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(console.error);
     }
@@ -131,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Global Exports for HTML Buttons
+// Global Exports for HTML Interaction
 window.toggleTheme = () => {
     document.documentElement.classList.toggle('dark');
     localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');

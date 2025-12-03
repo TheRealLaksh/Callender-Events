@@ -10,7 +10,7 @@ export const durationMap = {
     '-P2D': '2 Days',
 };
 
-export const durationRegex = /-P(\d+)([DH])|-PT(\d+)([MH])/;
+export const durationRegex = /^(-P(\d+)D|-PT(\d+)([MH]))$/;
 
 export const IST_VTIMEZONE = `
 BEGIN:VTIMEZONE
