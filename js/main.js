@@ -5,35 +5,22 @@ import {
     renderReminders, handleEventSubmit,
     editEvent, deleteEvent, duplicateEvent, undoDelete, parseNaturalLanguage,
     addReminderToForm, addCustomReminder, removeReminder,
-    toggleReminderArea, toggleClearModal, executeClearAll,
-    initEventUI 
+    toggleReminderArea, toggleClearModal, executeClearAll
 } from './events.js';
 import { initFallingPattern } from './background.js';
-import { initGoogleSignIn } from './googleAuth.js';
-import { initGoogleSync, startBackgroundSync, importAllFromGoogle } from './googleCalendarSync.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Start Background Animation
     initFallingPattern();
     
-    // 2. Initialize External Services
-    try { 
-        initGoogleSignIn(); 
-        initGoogleSync(); 
-        startBackgroundSync(5 * 60 * 1000); 
-        initEventUI(); 
-    } catch (e) { 
-        console.warn('Service init warning:', e); 
-    }
-
-    // 3. Load Data & Initial Render
+    // 2. Load Data & Initial Render
     loadFromStorage();
     renderReminders();
     renderCalendar(); 
     renderEventSlots(); 
     setupExport();
 
-    // 4. Initialize Date Pickers (Flatpickr)
+    // 3. Initialize Date Pickers (Flatpickr)
     const startFP = flatpickr("#event-datetime-start", {
         enableTime: true,
         dateFormat: "Y-m-d\\TH:i",
@@ -52,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         theme: "dark"
     });
 
-    // 5. Event Listeners
+    // 4. Event Listeners
     document.getElementById('event-form')?.addEventListener('submit', handleEventSubmit);
 
     document.getElementById('prev-month-btn')?.addEventListener('click', () => changeMonth(-1));
@@ -81,22 +68,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 parseNaturalLanguage(e.target.value);
             }
         });
-    }
-
-    // Google Import Button
-    const imp = document.getElementById('import-google');
-    if (imp) {
-        imp.onclick = async () => {
-            try {
-                await importAllFromGoogle();
-                renderCalendar();
-                renderEventSlots();
-                alert('Import complete');
-            } catch (e) { 
-                console.error(e); 
-                alert('Import failed'); 
-            }
-        };
     }
 
     // Keyboard Shortcuts
