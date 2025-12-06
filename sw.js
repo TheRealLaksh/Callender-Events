@@ -1,4 +1,4 @@
-const CACHE_NAME = 'calibridge-v3'; // Updated
+const CACHE_NAME = 'calibridge-v3'; 
 const ASSETS = [
     '/',
     '/index.html',

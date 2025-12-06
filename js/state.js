@@ -17,7 +17,7 @@ export function saveToStorage() {
     try {
         const payload = {
             events: state.events,
-            trash: state.trash, // FIX: Persist trash so Undo works after reload
+            trash: state.trash, // Persist trash so Undo works after reload
             eventIdCounter: state.eventIdCounter
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -43,7 +43,7 @@ export function loadFromStorage() {
             events = parsed;
         } else if (parsed && typeof parsed === 'object') {
             events = Array.isArray(parsed.events) ? parsed.events : [];
-            trash = Array.isArray(parsed.trash) ? parsed.trash : []; // FIX: Load trash
+            trash = Array.isArray(parsed.trash) ? parsed.trash : [];
             if (Number.isFinite(parsed.eventIdCounter)) {
                 storedCounter = parsed.eventIdCounter;
             }
@@ -64,11 +64,10 @@ export function loadFromStorage() {
                 let id = typeof ev.id === 'number' ? ev.id : parseInt(ev.id);
                 if (isNaN(id)) id = 0; 
 
+                // Google Sync properties (synced, googleEventId) removed here
                 return {
                     ...ev,
-                    id: id,
-                    synced: ev.synced === true,
-                    googleEventId: ev.googleEventId || null
+                    id: id
                 };
             });
         };
@@ -76,19 +75,16 @@ export function loadFromStorage() {
         state.events = sanitize(events);
         state.trash = sanitize(trash);
 
-        // Safe Counter Calculation (Prevents Stack Overflow)
-        // We must check both events AND trash to ensure we don't reuse an ID that is currently in the trash
+        // Safe Counter Calculation
         const maxIdEvents = state.events.reduce((max, ev) => (ev.id > max ? ev.id : max), 0);
         const maxIdTrash = state.trash.reduce((max, ev) => (ev.id > max ? ev.id : max), 0);
         const maxId = Math.max(maxIdEvents, maxIdTrash);
         
-        // Ensure counter is always ahead of the highest existing ID
         state.eventIdCounter = Math.max(storedCounter, maxId + 1);
         
         return true;
     } catch (err) {
         console.error('Failed to load from storage', err);
-        // Reset state to avoid crash loops on corrupted data
         state.events = [];
         state.trash = [];
         state.eventIdCounter = 1;
