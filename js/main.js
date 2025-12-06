@@ -10,8 +10,13 @@ import {
 import { initFallingPattern } from './background.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Start Background Animation
-    initFallingPattern();
+    // 1. Start Background Animation (if enabled)
+    if (localStorage.getItem('bg_anim') !== 'off') {
+        initFallingPattern();
+    } else {
+        const canvas = document.getElementById('falling-pattern-canvas');
+        if (canvas) canvas.style.display = 'none';
+    }
     
     // 2. Load Data & Initial Render
     loadFromStorage();
@@ -115,6 +120,21 @@ window.toggleTheme = () => {
     localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 };
 if (localStorage.getItem('theme') === 'light') document.documentElement.classList.remove('dark');
+
+// Background Toggle Logic
+window.toggleBackground = () => {
+    const canvas = document.getElementById('falling-pattern-canvas');
+    if (!canvas) return;
+    
+    if (canvas.style.display === 'none') {
+        canvas.style.display = 'block';
+        localStorage.setItem('bg_anim', 'on');
+        initFallingPattern(); // Restart animation
+    } else {
+        canvas.style.display = 'none';
+        localStorage.setItem('bg_anim', 'off');
+    }
+};
 
 window.deleteEvent = deleteEvent;
 window.duplicateEvent = duplicateEvent;

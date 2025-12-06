@@ -107,6 +107,7 @@ export function duplicateEvent(id) {
         ...original, 
         id: newId, 
         name: original.name + " (Copy)", 
+        category: original.category || 'Work',
         reminders: [...original.reminders]
     });
     saveToStorage();
@@ -127,6 +128,9 @@ export function editEvent(id) {
     
     if(startPicker) startPicker.setDate(ev.datetimeStart);
     if(endPicker) endPicker.setDate(ev.datetimeEnd);
+
+    // Load category
+    document.getElementById('event-category').value = ev.category || 'Work';
 
     document.getElementById('event-timezone').value = ev.timezone;
     document.getElementById('event-description').value = ev.description || '';
@@ -175,6 +179,7 @@ export function handleEventSubmit(e) {
         location: document.getElementById('event-location').value.trim(),
         datetimeStart: start,
         datetimeEnd: end,
+        category: document.getElementById('event-category').value,
         timezone: document.getElementById('event-timezone').value,
         description: document.getElementById('event-description').value.trim(),
         reminders: [...state.currentReminders]

@@ -23,22 +23,15 @@ function handleDrop(e, targetDateStr) {
         return;
     }
 
-    // update event start/end to targetDateStr (keep duration)
+    // update event start/end to targetDateStr (keep duration & time)
     try {
         const oldStart = new Date(ev.datetimeStart);
         const oldEnd = new Date(ev.datetimeEnd);
+        const durationMs = oldEnd - oldStart;
         const target = new Date(targetDateStr);
         
-        // Preserve time of day? 
-        // Current logic sets it to midnight of target date. 
-        // If you want to keep the specific time, logic would need adjustment.
-        // For now, we assume dragging to a day slot resets time to default or start of day.
-        
-        const durationMs = oldEnd - oldStart;
-        
-        // Construct new start based on target date
+        // Preserve original time
         const newStart = new Date(target); 
-        // Optional: If you want to keep the original hour/minute, copy them here:
         newStart.setHours(oldStart.getHours(), oldStart.getMinutes());
 
         const newEnd = new Date(newStart.getTime() + durationMs);
@@ -48,6 +41,7 @@ function handleDrop(e, targetDateStr) {
         
         saveToStorage();
         renderCalendar();
+        renderEventSlots(); // Update list as well
     } catch (err) {
         console.error('Failed to drop event:', err);
     }
@@ -61,7 +55,6 @@ function handleDragOver(e) {
 // --- Calendar rendering & helpers ---
 
 export function renderEventSlots() {
-    // FIX: Correct ID matched to index.html
     const listEl = document.getElementById('event-slots-container');
     if (!listEl) return;
     listEl.innerHTML = '';
@@ -73,7 +66,15 @@ export function renderEventSlots() {
         .slice(0, 20);
 
     if (upcoming.length === 0) {
-        listEl.innerHTML = '<div class="text-xs text-slate-500 text-center py-4">No upcoming events</div>';
+        listEl.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-10 opacity-50">
+                <svg class="w-16 h-16 text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-xs text-slate-500">No upcoming events.</span>
+                <span class="text-[10px] text-slate-600">Time to relax!</span>
+            </div>
+        `;
         return;
     }
 
@@ -119,6 +120,14 @@ export function renderCalendar() {
     const grid = document.getElementById('calendar-grid');
     if (!grid) return;
     grid.innerHTML = '';
+    
+    // Category Colors
+    const catColors = {
+        'Work': '#3b82f6',     // Blue
+        'Personal': '#10b981', // Emerald
+        'Health': '#ef4444',   // Red
+        'Important': '#8b5cf6' // Violet
+    };
     
     // Update Header Display
     const monthDisplay = document.getElementById('month-year-display');
@@ -191,7 +200,7 @@ export function renderCalendar() {
                 const s = new Date(ev.datetimeStart);
                 return s.getFullYear() === year && s.getMonth() === month && s.getDate() === day;
             } catch { return false; }
-        }); // Removed slice here to handle "more" indicator if needed, or stick to slice(0,3)
+        });
 
         // Show max 3 events, indicator for more?
         const displayEvents = dayEvents.slice(0, 3);
@@ -203,17 +212,14 @@ export function renderCalendar() {
             evDiv.ondragstart = (e) => handleDragStart(e, ev.id);
             
             evDiv.className = 'text-[10px] truncate rounded px-1.5 py-0.5 cursor-grab active:cursor-grabbing hover:brightness-110 shadow-sm transition w-full text-left';
-            evDiv.style.background = ev.color || 'linear-gradient(90deg, rgba(99,102,241,0.2), rgba(139,92,246,0.15))';
-            evDiv.style.borderLeft = '2px solid #818cf8'; // Primary color accent
-            evDiv.textContent = ev.name || 'Event';
             
-            // Sync Badge (Dot)
-            if (ev.synced) {
-                const dot = document.createElement('span');
-                dot.className = 'inline-block w-1.5 h-1.5 bg-emerald-400 rounded-full ml-1';
-                dot.title = "Synced with Google";
-                evDiv.appendChild(dot);
-            }
+            // Color Coding Logic
+            const baseColor = catColors[ev.category] || '#6366f1';
+            evDiv.style.background = `${baseColor}20`; // 20% opacity hex
+            evDiv.style.borderLeft = `3px solid ${baseColor}`;
+            evDiv.style.color = '#e2e8f0'; // Slate-200 for text readability
+            
+            evDiv.textContent = ev.name || 'Event';
 
             evDiv.onclick = (e) => {
                 e.stopPropagation();
@@ -231,19 +237,24 @@ export function renderCalendar() {
             eventsWrap.appendChild(more);
         }
 
-        // FIX: Append logic MOVED OUTSIDE the loop
         btn.appendChild(eventsWrap);
 
-        // FIX: Click logic MOVED OUTSIDE the loop
+        // Click logic for Quick Add
         btn.onclick = () => {
             state.selectedDate = new Date(year, month, day);
-            // Don't change view/currentDate on simple select, just highlight
+            // Optionally sync view if desired: state.currentCalendarDate = new Date(state.selectedDate);
             renderCalendar(); 
-            // Note: If you want to sync the "Current View Month" with selection, uncomment:
-            // state.currentCalendarDate = new Date(state.selectedDate);
+            
+            // UX Improvement: Auto-fill start date & focus
+            const fpStart = document.getElementById('event-datetime-start')._flatpickr;
+            if (fpStart) {
+                const now = new Date();
+                const target = new Date(year, month, day, now.getHours(), now.getMinutes());
+                fpStart.setDate(target);
+            }
+            document.getElementById('event-name').focus();
         };
 
-        // FIX: Append to grid MOVED OUTSIDE the loop (Runs for every day cell)
         grid.appendChild(btn);
     }
 }
@@ -251,15 +262,11 @@ export function renderCalendar() {
 export function changeMonth(offset) {
     state.currentCalendarDate = state.currentCalendarDate || new Date();
     state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + offset);
-    // Optional: Select the 1st of the new month? Or keep old selection?
-    // Let's keep the selection logic simple for now.
     renderCalendar();
 }
 
 export function changeView(mode) {
     state.viewMode = mode;
-    // Week view logic is not fully implemented in this snippet, 
-    // but this switches the state flag for future expansion.
     state.currentCalendarDate = new Date(state.selectedDate || new Date());
     renderCalendar();
 }

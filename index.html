@@ -239,8 +239,6 @@
                     </svg>
                 </div>
 
-              
-
                 <div class="flex gap-2">
                     <button onclick="changeView('month')"
                         class="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-white dark:text-slate-900 transition shadow-md hover:shadow-lg"
@@ -248,6 +246,11 @@
                     <button onclick="changeView('week')"
                         class="px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
                         id="view-week-btn">Week</button>
+                    
+                    <button onclick="toggleBackground()" class="p-1.5 bg-white dark:bg-slate-800 rounded-md text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition" title="Toggle Animation">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>
+                    </button>
+
                     <button onclick="toggleTheme()"
                         class="p-1.5 bg-white dark:bg-slate-800 rounded-md text-yellow-500 dark:text-yellow-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
                         title="Toggle Theme">
@@ -265,26 +268,22 @@
             class="relative w-full overflow-hidden bg-white/60 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 backdrop-blur-sm py-2 rounded-lg shadow-sm mb-4">
             <div class="flex animate-marquee whitespace-nowrap items-center">
                 <div class="flex gap-12 px-6 min-w-full justify-around">
-                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Google Calendar
-                        Ready</span>
-                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Outlook Compatible</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Privacy First</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Offline Ready</span>
                     <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Notion Integration</span>
                     <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Time Zone Flexible</span>
                     <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Import/Export .ics
                         Files</span>
                     <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Premium Dark Mode</span>
-                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Apple Calendar Ready</span>
                 </div>
                 <div class="flex gap-12 px-6 min-w-full justify-around" aria-hidden="true">
-                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Google Calendar
-                        Ready</span>
-                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Outlook Compatible</span>
+                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Privacy First</span>
+                    <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Offline Ready</span>
                     <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Notion Integration</span>
                     <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Time Zone Flexible</span>
                     <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Import/Export .ics
                         Files</span>
                     <span class="text-sm font-medium text-emerald-500 dark:text-emerald-400">★ Premium Dark Mode</span>
-                    <span class="text-sm font-medium text-indigo-500 dark:text-indigo-400">★ Apple Calendar Ready</span>
                 </div>
             </div>
         </div>
@@ -329,6 +328,16 @@
                                 <input type="text" id="event-datetime-end" placeholder="Select..."
                                     class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:ring-2 focus:ring-primary outline-none transition-all cursor-pointer">
                             </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label for="event-category" class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Category</label>
+                            <select id="event-category" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:ring-2 focus:ring-primary outline-none">
+                                <option value="Work">Work (Blue)</option>
+                                <option value="Personal">Personal (Green)</option>
+                                <option value="Health">Health (Red)</option>
+                                <option value="Important">Important (Purple)</option>
+                            </select>
                         </div>
 
                         <div class="space-y-1">
