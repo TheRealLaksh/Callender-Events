@@ -1,15 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Calibridge">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8b93ff"/>
-      <stop offset="1" stop-color="#5b5bf0"/>
+      <stop offset="0" stop-color="#7c83ff"/>
+      <stop offset="1" stop-color="#4f46e5"/>
     </linearGradient>
   </defs>
   <rect width="64" height="64" rx="16" fill="url(#g)"/>
-  <rect x="12" y="14" width="40" height="38" rx="7" fill="none" stroke="#fff" stroke-width="3.5"/>
-  <path d="M12 25h40" stroke="#fff" stroke-width="3.5"/>
-  <path d="M22 10v8M42 10v8" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
-  <path d="M16 44h32" stroke="#34d399" stroke-width="3.5" stroke-linecap="round"/>
-  <path d="M18 44c3-11 8-15 14-15s11 4 14 15" fill="none" stroke="#34d399" stroke-width="3.5" stroke-linecap="round"/>
-  <path d="M25 44v-8M32 44V30M39 44v-8" stroke="#34d399" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- An arch of seven days (today in green) over a bridge deck -->
+  <g transform="translate(0 -0.5)">
+    <g fill="#fff">
+      <circle cx="12" cy="41" r="3.3"/>
+      <circle cx="14.7" cy="31" r="3.3"/>
+      <circle cx="22" cy="23.7" r="3.3"/>
+      <circle cx="42" cy="23.7" r="3.3"/>
+      <circle cx="49.3" cy="31" r="3.3"/>
+      <circle cx="52" cy="41" r="3.3"/>
+    </g>
+    <circle cx="32" cy="21" r="4.2" fill="#34d399"/>
+    <path d="M8 49h48" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/>
+  </g>
 </svg>
