@@ -70,12 +70,13 @@ scaled to 78% and 94%). To change the logo, edit `favicon.svg`, then re-render a
 <!-- handoff:auto:start -->
 ## Auto: repo state
 
-_Refreshed 9 Oct 2026, 8:15 pm IST by `scripts/handoff.mjs` (runs on every commit). Don't edit inside this block._
+_Refreshed 9 Oct 2026, 8:19 pm IST by `scripts/handoff.mjs` (runs on every commit). Don't edit inside this block._
 
 Branch: `main` · remote: https://github.com/TheRealLaksh/Callender-Events.git
 
 ### Last 15 commits
 
+- `be042ba` 2026-10-09 20:15 Handoff: logo is on main but not live (Netlify deploys paused until 26 Oct)
 - `8968294` 2026-10-09 20:09 Add HANDOFF.md with Stop and pre-commit hooks that keep it current
 - `d4d9aed` 2026-10-09 20:08 Redraw the Calibridge logo: an arch of days over a bridge deck
 - `1eb43a8` 2026-10-09 18:55 Repeating-event exceptions, weekday repeats, resize/drag-create, mini calendar, a11y, e2e suite (#2)
@@ -90,11 +91,10 @@ Branch: `main` · remote: https://github.com/TheRealLaksh/Callender-Events.git
 - `738f325` 2025-11-20 21:50 update
 - `670b5b3` 2025-11-20 20:33 update
 - `1d36b10` 2025-11-20 20:24 update
-- `51601aa` 2025-11-20 20:09 Update index.html
 
 ### Uncommitted changes at refresh time
 
 ```
-M  HANDOFF.md
+A  vercel.json
 ```
 <!-- handoff:auto:end -->
