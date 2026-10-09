@@ -1,210 +1,76 @@
-<!-- ===================================================================== -->
-<!--                           CALIBRIDGE — BY LAKSH                        -->
-<!-- ===================================================================== -->
-
 <p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0B0B0B&height=180&text=CaliBridge%20•%20Event%20Calendar&fontSize=42&fontColor=FFFFFF&fontAlignY=35" />
+  <img src="public/favicon.svg" width="72" height="72" alt="Calibridge logo" />
 </p>
 
-<br>
+<h1 align="center">Calibridge</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Status-Active-00C853?style=for-the-badge" />
-  <img src="https://img.shields.io/github/languages/top/TheRealLaksh/Callender-Events?style=for-the-badge&color=2962FF" />
-  <img src="https://img.shields.io/github/last-commit/TheRealLaksh/Callender-Events?style=for-the-badge&color=FFD600" />
+  A fast, private calendar that lives entirely in your browser.<br />
+  No account, no server, no tracking. Installable and works offline.
 </p>
 
-<br>
+<p align="center"><a href="https://calibridge.lakshpradhwani.com">calibridge.lakshpradhwani.com</a></p>
 
-<!-- ===================================================================== -->
-<!--                            PROJECT OVERVIEW                            -->
-<!-- ===================================================================== -->
+## Features
 
-<div align="center">
-<table><tr><td>
+- **Month, week and agenda views**, with a live now-line, overlapping events laid out side by side, and "+N more" overflow.
+- **Real time zones.** Events are stored as exact instants plus the zone they were created in, so a 9:00 call in Tokyo shows up at the right time wherever you open it.
+- **Repeating events** (daily / weekly / monthly / yearly, every N, until a date or a count) that stay at the same wall-clock time across daylight-saving changes.
+- **All-day and multi-day events**, categories with colour filters, location and notes.
+- **Reminders** (at start, minutes, hours, days, weeks) as in-app alerts and system notifications while the app is open.
+- **Quick add**: type `Lunch with Sam tomorrow at 1pm for 90 min` and review it before saving.
+- **Drag to reschedule** in the month and week views, **undo / redo** for every change (`Ctrl/⌘ Z`), and full keyboard control (`?` lists the shortcuts).
+- **`.ics` import and export**, compatible with Google, Apple and Outlook. Re-importing a file updates events instead of duplicating them.
+- **Search** across titles, locations and notes (`/`).
+- Light, dark and system themes; responsive down to phones; accessible dialogs and focus handling.
 
-### 📅 CaliBridge — Your Daily Schedule, Organized Perfectly  
-CaliBridge is a **modern, responsive, interactive Calendar + Event Manager** created using **HTML, CSS, and JavaScript**.  
-It blends minimal design with powerful features: event creation, daily task tracking, live highlighting, smooth animations, and instant LocalStorage saving — all in a clean and intuitive UI.
+## Privacy
 
-</td></tr></table>
-</div>
+Everything is stored in your browser's `localStorage`. The production page ships with a strict Content-Security-Policy (no third-party scripts, fonts or analytics, and no network calls other than loading itself), so your events cannot leave the device. Use **Export** to back up or move your data.
 
-<br>
-
----
-
-# 🌟 Features
-
-<div align="center">
-<table>
-<tr>
-
-<td width="33%">
-
-### 🎨 Design & UI  
-- Modern minimal interface  
-- Soft shadows & clean spacing  
-- Smooth page transitions  
-- Adaptive color tones  
-- Subtle hover animations  
-- Mobile-optimized layout  
-
-</td>
-
-<td width="33%">
-
-### 📅 Calendar System  
-- Auto-generated days  
-- Month switching  
-- Current day highlight  
-- Intelligent blank-day spacing  
-- Consistent weekday alignment  
-- Year navigation support (expandable)  
-
-</td>
-
-<td width="33%">
-
-### ⚡ Event Management  
-- Add events instantly  
-- View all events for selected day  
-- Persistent LocalStorage saving  
-- Smart input validation  
-- Instant DOM update  
-- Works offline  
-
-</td>
-
-</tr>
-</table>
-</div>
-
-<br>
-
----
-
-# 🧩 Advanced Features
-
-### 🔹 Intelligent Empty-Space Handling  
-CaliBridge calculates how many blank spaces a month needs based on weekday alignment, ensuring a perfect grid every time.
-
-### 🔹 Auto-Sync Event Rendering  
-Whenever you add an event, the calendar automatically refreshes its UI without reload.
-
-### 🔹 Daily Event Indicator Badges  
-Dates with events display subtle markers for quick visual distinction.
-
-### 🔹 Event Detail Popup  
-Click any date → Opens a clean event card display with:
-
-- Title  
-- Time  
-- Optional description  
-- Color-coded categories (expandable)
-
-### 🔹 Full Keyboard Accessibility  
-Tab navigation, Enter-key selection, smooth focus transitions.
-
-### 🔹 Future-Proof Architecture  
-Designed so you can easily add:
-
-- Notifications  
-- Cloud sync  
-- Event editing & deletion  
-- Multiple calendars  
-- Themes  
-- Week view  
-
-<br>
-
----
-
-# 🧑‍💻 Sections Overview
-
-## 🗓️ Main Calendar View  
-- Dynamically generated  
-- Smooth month navigation  
-- Current date glow  
-
-## 📝 Event Creation Panel  
-Includes:
-
-- Event name  
-- Date auto-fill  
-- Time picker  
-- Optional details  
-- Round animated save button  
-
-## 🗃️ Event List Popup  
-Shows all tasks for a day in a compact card layout with soft hover effects.
-
-<br>
-
----
-
-# 🔧 Architecture
-
-```
-CaliBridge/
-│── index.html        -> Main calendar UI
-│── style.css         -> Theme, grid, responsive UI, animations
-│── script.js         -> Calendar logic, event system, state manager
-│── assets/
-│    ├── icons/       -> Interface icons
-│    └── images/      -> Decorative/optional images
-```
-
-<br>
-
----
-
-# 🛠️ Tech Stack
-
-<div align="center">
-<img src="https://skillicons.dev/icons?i=html,css,js&theme=dark" />
-</div>
-
-<br>
-
----
-
-# 🧪 Code Quality Highlights
-
-- Modular, readable structure  
-- Calendar logic split into clean functions  
-- Optimized animations (GPU-friendly)  
-- Zero frameworks — pure JS  
-- LocalStorage used as lightweight database  
-- Fully responsive grid + layout  
-
-<br>
-
----
-
-# 🚀 Installation
+## Development
 
 ```bash
-git clone https://github.com/TheRealLaksh/Callender-Events
-cd Callender-Events
-# Open index.html in your browser
+npm install
+npm run dev         # local dev server
+npm test            # unit tests (Vitest)
+npm run typecheck   # strict TypeScript
+npm run build       # type-check + production build into dist/
+npm run preview     # serve the production build
 ```
 
-<br>
+Requires Node 20.19 or newer. The output in `dist/` is a static site that can be hosted anywhere; it expects to be served from the domain root.
 
----
+## Project layout
 
-# 🔗 Connect
+```
+src/
+  core/        Pure, framework-free logic with unit tests
+    tz.ts          wall-clock <-> instant conversion for any IANA zone
+    occurrences.ts recurrence expansion
+    ics.ts         RFC 5545 import / export
+    quickparse.ts  natural-language quick add
+    reminders.ts   which reminders are due
+    layout.ts      overlap layout for the week view
+  state/       EventStore (undo/redo + persistence) and preferences
+  services/    notifications, reminder scheduler, file helpers
+  ui/          DOM components (no framework); views/ holds month, week, agenda
+tests/         Vitest suites for core and state
+public/        icons, robots.txt, sitemap.xml
+```
 
-<div align="center">
-<a href="mailto:laksh.pradhwani@gmail.com"><img src="https://img.shields.io/badge/Email-Contact-FF5252?style=for-the-badge&logo=gmail"></a>
-<a href="https://github.com/TheRealLaksh"><img src="https://img.shields.io/badge/GitHub-TheRealLaksh-24292F?style=for-the-badge&logo=github"></a>
-<a href="https://www.linkedin.com/in/laksh-pradhwani"><img src="https://img.shields.io/badge/LinkedIn-Laksh%20Pradhwani-0A66C2?style=for-the-badge&logo=linkedin"></a>
-</div>
+### Data format
 
-<br>
+Timed events store `start` / `end` as UTC ISO strings and `tz` as the authoring zone. All-day events store plain `YYYY-MM-DD` dates (inclusive end). Data is versioned under `calibridge:v2`.
 
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=wave&color=0B0B0B&height=130&section=footer&text=CaliBridge%20•%20Stay%20Organized&fontColor=FFFFFF&fontSize=28" />
-</p>
+Calibridge 1.x data (`calibridge_events`) is migrated automatically on first load. The old key is left untouched as a backup.
 
+### Known limitations
+
+- Repeating events cannot have single-occurrence exceptions yet; editing or moving one changes the whole series.
+- On import, repeat rules beyond simple "every N days/weeks/months/years" (e.g. "every Mon and Wed") are simplified, and the app tells you when that happens.
+- Reminders fire only while Calibridge is open (browsers do not allow scheduled background notifications without a server).
+
+## Author
+
+Built by [Laksh Pradhwani](https://github.com/TheRealLaksh).
