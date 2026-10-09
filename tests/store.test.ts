@@ -6,6 +6,9 @@ import { dueReminders } from '../src/core/reminders';
 import { normalizeEvent } from '../src/core/normalize';
 import { EventStore, STORAGE_KEY } from '../src/state/store';
 import { PrefsStore } from '../src/state/prefs';
+import { detachOccurrence, excludeOccurrence, shiftedSpan } from '../src/state/actions';
+import { retargetSeries } from '../src/core/series';
+import { isLegacyHost, NEW_HOST } from '../src/ui/moved';
 import { wallStringToInstant } from '../src/core/tz';
 import { ev, MemoryStorage } from './helpers';
 
@@ -230,5 +233,94 @@ describe('dueReminders', () => {
     const due = dueReminders([r], t('2025-03-09T09:59'), t('2025-03-09T10:00'));
     // today's "at start", plus tomorrow's "1 day before" which lands at the same moment
     expect(due.map((d) => [d.minutesBefore, d.start.getDate()])).toEqual([[0, 9], [1440, 10]]);
+  });
+});
+
+describe('series actions', () => {
+  const base = () => {
+    const store = new EventStore(new MemoryStorage());
+    const e = store.add({
+      title: 'Standup', location: 'Zoom', description: '', category: 'work', allDay: false,
+      start: '2025-03-03T14:00:00.000Z', end: '2025-03-03T14:30:00.000Z', tz: 'UTC', reminders: [10],
+      recurrence: { freq: 'daily', interval: 1 },
+    });
+    return { store, e };
+  };
+
+  it('excludes one occurrence as a single undo step', () => {
+    const { store, e } = base();
+    excludeOccurrence(store, e.id, { start: new Date('2025-03-05T14:00:00.000Z'), end: new Date('2025-03-05T14:30:00.000Z'), allDay: false });
+    expect(store.get(e.id)?.exdates).toEqual(['2025-03-05T14:00:00.000Z']);
+    store.undo();
+    expect(store.get(e.id)?.exdates).toBeUndefined();
+  });
+
+  it('detaches an occurrence into its own event, atomically', () => {
+    const { store, e } = base();
+    const occ = { start: new Date('2025-03-05T14:00:00.000Z'), end: new Date('2025-03-05T14:30:00.000Z'), allDay: false };
+    const solo = detachOccurrence(store, e.id, occ, { title: 'Standup (moved)', start: '2025-03-05T16:00:00.000Z', end: '2025-03-05T16:30:00.000Z' });
+    expect(store.list()).toHaveLength(2);
+    expect(solo).toMatchObject({ title: 'Standup (moved)', location: 'Zoom', reminders: [10] });
+    expect(solo?.recurrence).toBeUndefined();
+    expect(solo?.uid).not.toBe(e.uid);
+    expect(store.get(e.id)?.exdates).toEqual(['2025-03-05T14:00:00.000Z']);
+    store.undo();
+    expect(store.list()).toHaveLength(1);
+    expect(store.get(e.id)?.exdates).toBeUndefined();
+  });
+
+  it('shifts spans by days and minutes, keeping length', () => {
+    const occ = { start: new Date(2025, 2, 5, 9, 0), end: new Date(2025, 2, 5, 10, 30), allDay: false };
+    const r = shiftedSpan(occ, 2, 60);
+    expect(new Date(r.start).getTime()).toBe(new Date(2025, 2, 7, 10, 0).getTime());
+    expect(new Date(r.end).getTime() - new Date(r.start).getTime()).toBe(90 * 60_000);
+    const allDay = { start: new Date(2025, 2, 5), end: new Date(2025, 2, 7), allDay: true }; // 5th and 6th
+    expect(shiftedSpan(allDay, 3)).toEqual({ start: '2025-03-08', end: '2025-03-09' });
+  });
+});
+
+describe('retargetSeries', () => {
+  it('retimes the whole series when one occurrence is retimed', () => {
+    const series = ev({ start: '2025-03-03T14:00:00.000Z', end: '2025-03-03T15:00:00.000Z', tz: 'UTC' });
+    // The 10 March occurrence is edited to start two hours later and run 90 minutes.
+    const r = retargetSeries(series, new Date('2025-03-10T14:00:00.000Z'), {
+      allDay: false, tz: 'UTC', start: '2025-03-10T16:00:00.000Z', end: '2025-03-10T17:30:00.000Z',
+    });
+    expect(r).toEqual({ start: '2025-03-03T16:00:00.000Z', end: '2025-03-03T17:30:00.000Z' });
+  });
+
+  it('moving an occurrence to another day moves the series start by the same days', () => {
+    const series = ev({ start: '2025-03-03T14:00:00.000Z', end: '2025-03-03T15:00:00.000Z', tz: 'UTC' });
+    const r = retargetSeries(series, new Date('2025-03-10T14:00:00.000Z'), {
+      allDay: false, tz: 'UTC', start: '2025-03-11T14:00:00.000Z', end: '2025-03-11T15:00:00.000Z',
+    });
+    expect(r.start).toBe('2025-03-04T14:00:00.000Z');
+  });
+
+  it('handles all-day series', () => {
+    const series = ev({ allDay: true, start: '2025-03-03', end: '2025-03-04' });
+    const r = retargetSeries(series, new Date(2025, 2, 10), { allDay: true, tz: 'UTC', start: '2025-03-12', end: '2025-03-14' });
+    expect(r).toEqual({ start: '2025-03-05', end: '2025-03-07' });
+  });
+
+  it('keeps the wall-clock time across a DST change between the series start and the edited occurrence', () => {
+    const NY = 'America/New_York';
+    const series = ev({ tz: NY, start: new Date(wallStringToInstant('2025-03-03T09:00', NY)).toISOString(), end: new Date(wallStringToInstant('2025-03-03T10:00', NY)).toISOString() });
+    // Occurrence on 17 March (after spring-forward) is moved to 11:00.
+    const occ = new Date(wallStringToInstant('2025-03-17T09:00', NY));
+    const r = retargetSeries(series, occ, {
+      allDay: false, tz: NY,
+      start: new Date(wallStringToInstant('2025-03-17T11:00', NY)).toISOString(),
+      end: new Date(wallStringToInstant('2025-03-17T12:00', NY)).toISOString(),
+    });
+    expect(r.start).toBe(new Date(wallStringToInstant('2025-03-03T11:00', NY)).toISOString());
+  });
+});
+
+describe('legacy host detection', () => {
+  it('recognises the old address only', () => {
+    expect(isLegacyHost('events.lakshp.live')).toBe(true);
+    expect(isLegacyHost(NEW_HOST)).toBe(false);
+    expect(isLegacyHost('localhost')).toBe(false);
   });
 });

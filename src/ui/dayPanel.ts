@@ -3,7 +3,7 @@ import { addDays, startOfDay } from '../core/dates';
 import { occurrencesOnDay } from '../core/occurrences';
 import type { AppContext } from './context';
 import { h, icon } from './dom';
-import { describeOccurrence, fmtDayLong, fmtWhen } from './format';
+import { describeOccurrence, fmtDayLong, fmtOtherZone, fmtWhen } from './format';
 
 /** The list of events for one day, used in the sidebar, under the month grid and in the "more" dialog. */
 export function dayPanel(ctx: AppContext, day: Date): HTMLElement {
@@ -25,7 +25,7 @@ export function dayPanel(ctx: AppContext, day: Date): HTMLElement {
                 type: 'button',
                 class: `day-item cat-${o.event.category}`,
                 'aria-label': describeOccurrence(o),
-                on: { click: () => ctx.openEvent(o.event.id) },
+                on: { click: () => ctx.openEvent(o.event.id, o) },
               },
               h('span', { class: 'day-item-bar', 'aria-hidden': 'true' }),
               h(
@@ -33,6 +33,7 @@ export function dayPanel(ctx: AppContext, day: Date): HTMLElement {
                 { class: 'day-item-body' },
                 h('span', { class: 'day-item-title', text: o.event.title }),
                 h('span', { class: 'day-item-meta' }, fmtWhen(o, start), o.recurring ? icon('repeat', 12) : null),
+                fmtOtherZone(o) ? h('span', { class: 'day-item-meta', title: 'Time in the event\'s own time zone', text: fmtOtherZone(o) ?? '' }) : null,
                 o.event.location ? h('span', { class: 'day-item-meta', text: o.event.location }) : null,
               ),
             ),

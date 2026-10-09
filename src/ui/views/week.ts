@@ -15,6 +15,41 @@ const DRAG_THRESHOLD_PX = 5;
 /** Scroll position survives re-renders (every store change rebuilds the view). */
 let scrollTop: number | null = null;
 
+/**
+ * A drag ends with a `click` that must not also open an editor. The view is rebuilt as soon as the drag commits,
+ * so the flag lives at module level (not in a per-element closure that the rebuild would discard).
+ */
+let suppressNextClick = false;
+let suppressTimer = 0;
+const suppressNextClicks = (): void => {
+  suppressNextClick = true;
+  // Backstop for keyboard-driven clicks, which never produce a pointerdown to reset the flag.
+  window.clearTimeout(suppressTimer);
+  suppressTimer = window.setTimeout(() => { suppressNextClick = false; }, 500);
+};
+/** True for the single click that follows a drag; consumes the flag so later, deliberate clicks work. */
+const clicksSuppressed = (): boolean => {
+  if (!suppressNextClick) return false;
+  suppressNextClick = false;
+  return true;
+};
+// Every deliberate click starts with a fresh pointerdown, which means the drag's leftover click (if the browser
+// never delivered it) must not be allowed to swallow this one. This is independent of timing, so it holds on slow
+// and fast machines alike.
+window.addEventListener('pointerdown', () => { suppressNextClick = false; }, true);
+
+/** Calls `abort` when Escape is pressed; returns a function that removes the listener. */
+function cancelOnEscape(abort: () => void): () => void {
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      abort();
+    }
+  };
+  window.addEventListener('keydown', onKey, true);
+  return () => window.removeEventListener('keydown', onKey, true);
+}
+
 export function renderWeek(host: HTMLElement, ctx: AppContext): void {
   const prevScroll = host.querySelector<HTMLElement>('.week-scroll');
   if (prevScroll) scrollTop = prevScroll.scrollTop;
@@ -72,7 +107,7 @@ export function renderWeek(host: HTMLElement, ctx: AppContext): void {
 
   const scroll = h('div', { class: 'week-scroll' }, body);
   scroll.addEventListener('scroll', () => { scrollTop = scroll.scrollTop; }, { passive: true });
-  host.append(h('div', { class: 'week' }, h('div', { class: 'week-fixed' }, head, allDayRow), scroll));
+  host.append(h('div', { class: 'week' }, h('div', { class: 'week-inner' }, h('div', { class: 'week-fixed' }, head, allDayRow), scroll)));
 
   if (scrollTop === null) {
     const hour = days.some((d) => isSameDay(d, today)) ? Math.max(0, today.getHours() - 2) : 7;
@@ -87,7 +122,7 @@ function allDayChip(o: Occurrence, ctx: AppContext): HTMLElement {
     class: `chip allday cat-${o.event.category}`,
     title: o.event.title,
     'aria-label': describeOccurrence(o),
-    on: { click: () => ctx.openEvent(o.event.id) },
+    on: { click: () => ctx.openEvent(o.event.id, o) },
   }, h('span', { class: 'chip-title', text: o.event.title }));
 }
 
@@ -112,7 +147,7 @@ function timeColumn(day: Date, occs: Occurrence[], ctx: AppContext, today: Date)
     style: { height: `${24 * HOUR_HEIGHT}px` },
     on: {
       click: (e) => {
-        if (e.target !== e.currentTarget) return;
+        if (clicksSuppressed() || e.target !== e.currentTarget) return;
         const y = e.clientY - (e.currentTarget as HTMLElement).getBoundingClientRect().top;
         const minutes = clamp(Math.floor(((y / HOUR_HEIGHT) * 60) / 30) * 30, 0, 23 * 60 + 30);
         ctx.nav.select(day);
@@ -120,6 +155,8 @@ function timeColumn(day: Date, occs: Occurrence[], ctx: AppContext, today: Date)
       },
     },
   });
+
+  attachCreateDrag(col, day, ctx);
 
   for (const { o, startMin, endMin } of segments) {
     const place = layout.get(o.key);
@@ -145,6 +182,12 @@ function timeColumn(day: Date, occs: Occurrence[], ctx: AppContext, today: Date)
       heightPx >= 62 && o.event.location ? h('span', { class: 'block-time', text: o.event.location }) : null,
     );
     attachDrag(block, o, ctx);
+    // A resize handle only makes sense where this column shows the event's real end.
+    if (o.end.getTime() <= dayEnd && !o.allDay) {
+      const handle = h('span', { class: 'block-resize', 'aria-hidden': 'true' });
+      attachResize(handle, block, o, ctx);
+      block.append(handle);
+    }
     col.append(block);
   }
 
@@ -160,12 +203,10 @@ function timeColumn(day: Date, occs: Occurrence[], ctx: AppContext, today: Date)
  * Touch input is left to scroll the page; a tap opens the event instead.
  */
 function attachDrag(block: HTMLElement, o: Occurrence, ctx: AppContext): void {
-  let justDragged = false;
-
   block.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (justDragged) return; // the click that follows a drag must not open the dialog
-    ctx.openEvent(o.event.id);
+    if (clicksSuppressed()) return; // the click that follows a drag must not open the dialog
+    ctx.openEvent(o.event.id, o);
   });
 
   block.addEventListener('pointerdown', (down) => {
@@ -182,6 +223,12 @@ function attachDrag(block: HTMLElement, o: Occurrence, ctx: AppContext): void {
     const colWidth = homeCol.getBoundingClientRect().width;
     block.setPointerCapture(down.pointerId);
 
+    let cancelled = false;
+    const stopEscape = cancelOnEscape(() => {
+      cancelled = true;
+      block.dispatchEvent(new PointerEvent('pointercancel', { pointerId: down.pointerId }));
+    });
+
     const onMove = (e: PointerEvent) => {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
@@ -194,6 +241,7 @@ function attachDrag(block: HTMLElement, o: Occurrence, ctx: AppContext): void {
     };
 
     const finish = (e: PointerEvent) => {
+      stopEscape();
       block.removeEventListener('pointermove', onMove);
       block.removeEventListener('pointerup', finish);
       block.removeEventListener('pointercancel', finish);
@@ -201,13 +249,115 @@ function attachDrag(block: HTMLElement, o: Occurrence, ctx: AppContext): void {
       block.classList.remove('dragging');
       block.style.transform = '';
       if (!dragging) return;
-      justDragged = true;
-      window.setTimeout(() => { justDragged = false; }, 0);
-      if (e.type === 'pointerup' && (deltaDays !== 0 || deltaMinutes !== 0)) ctx.moveEvent(o.event.id, deltaDays, deltaMinutes);
+      suppressNextClicks();
+      if (!cancelled && e.type === 'pointerup' && (deltaDays !== 0 || deltaMinutes !== 0)) {
+        ctx.moveEvent(o.event.id, deltaDays, deltaMinutes, o);
+      }
     };
 
     block.addEventListener('pointermove', onMove);
     block.addEventListener('pointerup', finish);
     block.addEventListener('pointercancel', finish);
   });
+}
+
+const snap = (minutes: number): number => Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+
+/** Drag the bottom edge of a block to change when the event ends. */
+function attachResize(handle: HTMLElement, block: HTMLElement, o: Occurrence, ctx: AppContext): void {
+  handle.addEventListener('click', (e) => e.stopPropagation());
+  handle.addEventListener('pointerdown', (down) => {
+    if (down.button !== 0 || down.pointerType === 'touch') return;
+    down.stopPropagation(); // do not start a move drag on the block
+    down.preventDefault();
+    const startY = down.clientY;
+    const startHeight = block.offsetHeight;
+    const durationMin = (o.end.getTime() - o.start.getTime()) / 60_000;
+    // The end may not pass the bottom of this day's column, or shrink the event below one snap step.
+    const maxDelta = Math.floor((24 * HOUR_HEIGHT - (block.offsetTop + startHeight + 2)) / HOUR_HEIGHT * 60 / SNAP_MINUTES) * SNAP_MINUTES;
+    const minDelta = Math.min(0, SNAP_MINUTES - durationMin);
+    let deltaMinutes = 0;
+    let cancelled = false;
+    handle.setPointerCapture(down.pointerId);
+    block.classList.add('resizing');
+    const stopEscape = cancelOnEscape(() => {
+      cancelled = true;
+      handle.dispatchEvent(new PointerEvent('pointercancel', { pointerId: down.pointerId }));
+    });
+
+    const onMove = (e: PointerEvent) => {
+      deltaMinutes = clamp(snap(((e.clientY - startY) / HOUR_HEIGHT) * 60), minDelta, Math.max(0, maxDelta));
+      block.style.height = `${startHeight + (deltaMinutes / 60) * HOUR_HEIGHT}px`;
+    };
+    const finish = (e: PointerEvent) => {
+      stopEscape();
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', finish);
+      handle.removeEventListener('pointercancel', finish);
+      if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
+      block.classList.remove('resizing');
+      block.style.height = '';
+      suppressNextClicks();
+      // A press without movement is just a click on the edge: change nothing.
+      if (!cancelled && e.type === 'pointerup' && deltaMinutes !== 0) ctx.resizeEvent(o.event.id, deltaMinutes, o);
+    };
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+  });
+}
+
+/** Drag across empty space in a day column to create an event covering that range. */
+function attachCreateDrag(col: HTMLElement, day: Date, ctx: AppContext): void {
+  col.addEventListener('pointerdown', (down) => {
+    if (down.button !== 0 || down.pointerType === 'touch' || down.target !== col) return;
+    const rect = col.getBoundingClientRect();
+    const toMinutes = (clientY: number) => clamp(snap(((clientY - rect.top) / HOUR_HEIGHT) * 60), 0, 24 * 60);
+    const anchorMin = clamp(Math.floor(((down.clientY - rect.top) / HOUR_HEIGHT) * 4) * SNAP_MINUTES, 0, 24 * 60 - SNAP_MINUTES);
+    let ghost: HTMLElement | null = null;
+    let range: [number, number] | null = null;
+    let cancelled = false;
+    col.setPointerCapture(down.pointerId);
+    const stopEscape = cancelOnEscape(() => {
+      cancelled = true;
+      col.dispatchEvent(new PointerEvent('pointercancel', { pointerId: down.pointerId }));
+    });
+
+    const onMove = (e: PointerEvent) => {
+      if (!ghost && Math.abs(e.clientY - down.clientY) < DRAG_THRESHOLD_PX) return;
+      const cur = toMinutes(e.clientY);
+      const a = Math.min(anchorMin, cur);
+      const b = Math.max(anchorMin + SNAP_MINUTES, cur);
+      range = [a, Math.min(b, 24 * 60)];
+      if (!ghost) {
+        ghost = h('div', { class: 'block ghost', 'aria-hidden': 'true' });
+        col.append(ghost);
+      }
+      ghost.style.top = `${(range[0] / 60) * HOUR_HEIGHT}px`;
+      ghost.style.height = `${((range[1] - range[0]) / 60) * HOUR_HEIGHT - 2}px`;
+      ghost.style.left = '1px';
+      ghost.style.width = 'calc(100% - 3px)';
+      ghost.textContent = `${fmtTime(minutesToDate(day, range[0]))} – ${fmtTime(minutesToDate(day, range[1]))}`;
+    };
+    const finish = (e: PointerEvent) => {
+      stopEscape();
+      col.removeEventListener('pointermove', onMove);
+      col.removeEventListener('pointerup', finish);
+      col.removeEventListener('pointercancel', finish);
+      if (col.hasPointerCapture(e.pointerId)) col.releasePointerCapture(e.pointerId);
+      ghost?.remove();
+      if (!ghost) return;
+      suppressNextClicks(); // the click that follows a drag must not also create a default-length event
+      if (cancelled || !range || e.type !== 'pointerup') return;
+      ctx.nav.select(day);
+      ctx.newEvent({ date: day, minutes: range[0], durationMinutes: range[1] - range[0] });
+    };
+    col.addEventListener('pointermove', onMove);
+    col.addEventListener('pointerup', finish);
+    col.addEventListener('pointercancel', finish);
+  });
+}
+
+function minutesToDate(day: Date, minutes: number): Date {
+  return new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, minutes);
 }

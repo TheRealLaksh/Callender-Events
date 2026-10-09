@@ -10,9 +10,13 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:all": "npm run typecheck && npm test && npm run test:e2e"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.56.1",
     "jsdom": "^26.1.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.7",

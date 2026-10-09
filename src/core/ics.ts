@@ -7,6 +7,7 @@ import { eventSpan } from './occurrences';
 import { newUid, pad2 } from './util';
 
 const CRLF = '\r\n';
+const BYDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 const encoder = new TextEncoder();
 
 // ---------------------------------------------------------------------------
@@ -59,6 +60,9 @@ function compactWall(ms: number, tz: string): string {
 function rrule(ev: CalEvent, rec: Recurrence): string {
   const parts = [`FREQ=${rec.freq.toUpperCase()}`];
   if (rec.interval > 1) parts.push(`INTERVAL=${rec.interval}`);
+  if (rec.freq === 'weekly' && rec.weekdays && rec.weekdays.length > 0) {
+    parts.push(`BYDAY=${rec.weekdays.map((d) => BYDAY[d]).join(',')}`);
+  }
   if (rec.until) {
     if (ev.allDay) {
       parts.push(`UNTIL=${compactDate(rec.until)}`);
@@ -101,6 +105,10 @@ export function serializeIcs(events: readonly CalEvent[], calendarName = 'Calibr
     }
 
     if (ev.recurrence) lines.push(`RRULE:${rrule(ev, ev.recurrence)}`);
+    if (ev.recurrence && ev.exdates && ev.exdates.length > 0) {
+      if (ev.allDay) lines.push(`EXDATE;VALUE=DATE:${ev.exdates.map(compactDate).join(',')}`);
+      else lines.push(`EXDATE;TZID=${ev.tz}:${ev.exdates.map((x) => compactWall(Date.parse(x), ev.tz)).join(',')}`);
+    }
     lines.push(`SUMMARY:${escapeText(ev.title || 'Untitled')}`);
     if (ev.location) lines.push(`LOCATION:${escapeText(ev.location)}`);
     if (ev.description) lines.push(`DESCRIPTION:${escapeText(ev.description)}`);
@@ -210,7 +218,6 @@ const FREQS: Record<string, Recurrence['freq']> = {
   MONTHLY: 'monthly',
   YEARLY: 'yearly',
 };
-const BYDAY = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 
 function parseRecurrence(
   value: string,
@@ -243,8 +250,16 @@ function parseRecurrence(
   for (const key of Object.keys(parts)) {
     if (!key.startsWith('BY')) continue;
     const v = parts[key];
+    if (key === 'BYDAY' && freq === 'weekly') {
+      // Plain weekday lists ("MO,WE,FR") are supported; positional ones ("2MO") are not.
+      const days = v.split(',').map((d) => BYDAY.indexOf(d.trim().toUpperCase()));
+      if (days.length > 0 && days.every((d) => d >= 0)) {
+        const unique = [...new Set(days)].sort((a, b) => a - b);
+        if (!(unique.length === 1 && unique[0] === start.weekday)) rec.weekdays = unique;
+        continue;
+      }
+    }
     const trivial =
-      (key === 'BYDAY' && freq === 'weekly' && v === BYDAY[start.weekday]) ||
       (key === 'BYMONTHDAY' && (freq === 'monthly' || freq === 'yearly') && +v === start.d) ||
       (key === 'BYMONTH' && freq === 'yearly' && +v === start.m);
     if (!trivial) simplified = true;
@@ -256,7 +271,6 @@ export function parseIcs(text: string): ImportResult {
   const localTz = localTimeZone();
   const result: ImportResult = { events: [], skipped: 0, warnings: [] };
   let simplifiedCount = 0;
-  let exceptionCount = 0;
   let unknownZones = 0;
 
   let inEvent = false;
@@ -319,7 +333,16 @@ export function parseIcs(text: string): ImportResult {
       recurrence = parsed.rec;
       if (parsed.simplified) simplifiedCount++;
     }
-    if (get('EXDATE')) exceptionCount++;
+    const exdates: string[] = [];
+    if (recurrence) {
+      for (const prop of props.filter((x) => x.name === 'EXDATE')) {
+        for (const raw of prop.value.split(',')) {
+          const d = parseIcsDate({ ...prop, value: raw.trim() }, tz);
+          if (allDay && d?.kind === 'date') exdates.push(d.key);
+          else if (!allDay && d?.kind === 'time') exdates.push(new Date(d.ms).toISOString());
+        }
+      }
+    }
 
     const categories = get('CATEGORIES')?.value.split(',').map((c) => unescapeText(c));
     const category = categories?.map(categoryFromText).find(Boolean) ?? DEFAULT_CATEGORY;
@@ -336,6 +359,7 @@ export function parseIcs(text: string): ImportResult {
       tz,
       reminders: [...new Set(reminders)].sort((a, b) => a - b),
       ...(recurrence ? { recurrence } : {}),
+      ...(exdates.length > 0 ? { exdates: [...new Set(exdates)] } : {}),
     });
   };
 
@@ -372,9 +396,6 @@ export function parseIcs(text: string): ImportResult {
 
   if (simplifiedCount) {
     result.warnings.push(`${simplifiedCount} repeating event(s) use rules Calibridge cannot represent and were simplified.`);
-  }
-  if (exceptionCount) {
-    result.warnings.push(`${exceptionCount} repeating event(s) had excluded dates, which were ignored.`);
   }
   if (unknownZones) {
     result.warnings.push(`${unknownZones} event(s) used an unknown time zone and were read as local time.`);

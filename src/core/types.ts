@@ -10,6 +10,8 @@ export interface Recurrence {
   until?: string;
   /** Total number of occurrences. Ignored when `until` is set. */
   count?: number;
+  /** Weekly only: weekdays to repeat on (0 = Sunday ... 6 = Saturday). Defaults to the start's weekday. */
+  weekdays?: number[];
 }
 
 /**
@@ -34,6 +36,11 @@ export interface CalEvent {
   /** Minutes before the start at which to remind. `0` means "at start". */
   reminders: number[];
   recurrence?: Recurrence;
+  /**
+   * Occurrences removed from a repeating series. Timed events store the occurrence's start as a UTC
+   * ISO string; all-day events store its `YYYY-MM-DD` date.
+   */
+  exdates?: string[];
   createdAt: string;
   updatedAt: string;
 }

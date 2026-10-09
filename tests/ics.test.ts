@@ -219,12 +219,55 @@ describe('parseIcs', () => {
     expect(r.skipped).toBe(2);
   });
 
+  it('round-trips weekday lists and excluded occurrences', () => {
+    const timed = ev({
+      uid: 'w@test',
+      start: iso('2025-03-03T09:00'),
+      end: iso('2025-03-03T09:30'),
+      recurrence: { freq: 'weekly', interval: 1, weekdays: [1, 3, 5], count: 10 },
+      exdates: [iso('2025-03-05T09:00'), iso('2025-03-10T09:00')],
+    });
+    const allDay = ev({
+      uid: 'a@test',
+      allDay: true,
+      start: '2025-03-03',
+      end: '2025-03-03',
+      recurrence: { freq: 'daily', interval: 1 },
+      exdates: ['2025-03-04', '2025-03-06'],
+    });
+    const text = serializeIcs([timed, allDay]);
+    expect(text).toContain('RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR;COUNT=10');
+    expect(text).toContain('EXDATE;TZID=America/New_York:20250305T090000,20250310T090000');
+    expect(text).toContain('EXDATE;VALUE=DATE:20250304,20250306');
+    const [t, a] = parseIcs(text).events;
+    expect(t.recurrence).toEqual(timed.recurrence);
+    expect(t.exdates).toEqual(timed.exdates);
+    expect(a.exdates).toEqual(allDay.exdates);
+  });
+
+  it('reads EXDATE lines from other calendars (UTC, repeated lines)', () => {
+    const text = [
+      'BEGIN:VEVENT',
+      'UID:x',
+      'DTSTART:20250303T140000Z',
+      'RRULE:FREQ=DAILY',
+      'EXDATE:20250304T140000Z',
+      'EXDATE:20250305T140000Z,20250306T140000Z',
+      'END:VEVENT',
+    ].join('\r\n');
+    const [e] = parseIcs(text).events;
+    expect(e.exdates).toEqual(['2025-03-04T14:00:00.000Z', '2025-03-05T14:00:00.000Z', '2025-03-06T14:00:00.000Z']);
+  });
+
   it('warns when recurrence rules are simplified, but not for equivalent ones', () => {
     const rule = (r: string) =>
       parseIcs(['BEGIN:VEVENT', 'UID:r', 'DTSTART:20250310T090000Z', `RRULE:${r}`, 'END:VEVENT'].join('\r\n'));
     // 2025-03-10 is a Monday
     expect(rule('FREQ=WEEKLY;BYDAY=MO').warnings).toEqual([]);
-    expect(rule('FREQ=WEEKLY;BYDAY=MO,WE').warnings[0]).toMatch(/simplified/);
+    expect(rule('FREQ=WEEKLY;BYDAY=MO,WE').warnings).toEqual([]);
+    expect(rule('FREQ=WEEKLY;BYDAY=MO,WE').events[0].recurrence?.weekdays).toEqual([1, 3]);
+    expect(rule('FREQ=MONTHLY;BYDAY=2MO').warnings[0]).toMatch(/simplified/);
+    expect(rule('FREQ=WEEKLY;BYDAY=2MO').warnings[0]).toMatch(/simplified/);
     expect(rule('FREQ=MONTHLY;BYMONTHDAY=10').warnings).toEqual([]);
     expect(rule('FREQ=HOURLY').events[0].recurrence).toBeUndefined();
     expect(rule('FREQ=DAILY;UNTIL=20250320T000000Z').events[0].recurrence?.until).toBe('2025-03-19');

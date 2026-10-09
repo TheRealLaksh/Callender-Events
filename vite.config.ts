@@ -8,7 +8,8 @@ function contentSecurityPolicy(): Plugin {
     "default-src 'self'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
+    // The only external origin: the new home of the site, probed from the old address to show a "we moved" notice.
+    "img-src 'self' data: https://calibridge.lakshpradhwani.com",
     "connect-src 'self'",
     "manifest-src 'self'",
     "worker-src 'self'",

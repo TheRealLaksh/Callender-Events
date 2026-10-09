@@ -18,9 +18,15 @@ export interface AppContext {
   nav: Nav;
   /** Occurrences in `[from, to)` after applying the calendar filters. */
   occurrences(from: Date, to: Date): Occurrence[];
-  openEvent(id: string): void;
+  /** Open the editor. Pass the clicked occurrence so repeating events can be edited "this one only". */
+  openEvent(id: string, occurrence?: Occurrence): void;
   newEvent(init?: NewEventInit): void;
   openDay(day: Date): void;
-  /** Shift an event by whole days (and optionally minutes), keeping its duration. */
-  moveEvent(id: string, deltaDays: number, deltaMinutes?: number): void;
+  /** Change an event's end by `deltaMinutes` (its start stays). For an occurrence of a repeating event, only that occurrence changes. */
+  resizeEvent(id: string, deltaMinutes: number, occurrence?: Occurrence): void;
+  /**
+   * Shift an event by whole days (and optionally minutes), keeping its duration. For an occurrence of a
+   * repeating event, only that occurrence moves.
+   */
+  moveEvent(id: string, deltaDays: number, deltaMinutes?: number, occurrence?: Occurrence): void;
 }

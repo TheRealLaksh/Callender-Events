@@ -35,6 +35,31 @@ export function confirmDialog(opts: {
   );
 }
 
+/** Asks which part of a repeating series a change applies to. */
+export function scopeDialog(opts: { title: string; message: string; thisLabel: string; allLabel: string; danger?: boolean; onChoose: (scope: 'this' | 'all') => void }): void {
+  const id = 'scope-title';
+  const choose = (scope: 'this' | 'all') => () => {
+    modal.close();
+    opts.onChoose(scope);
+  };
+  const modal = openModal(
+    h(
+      'div',
+      { class: 'confirm' },
+      h('h2', { id, class: 'modal-title', text: opts.title }),
+      h('p', { class: 'muted', text: opts.message }),
+      h(
+        'div',
+        { class: 'scope-actions' },
+        h('button', { type: 'button', class: 'btn', text: opts.thisLabel, on: { click: choose('this') } }),
+        h('button', { type: 'button', class: `btn ${opts.danger ? 'btn-danger' : 'btn-primary'}`, text: opts.allLabel, on: { click: choose('all') } }),
+        h('button', { type: 'button', class: 'btn btn-ghost', text: 'Cancel', on: { click: () => modal.close() } }),
+      ),
+    ),
+    { labelledBy: id, className: 'modal-sm' },
+  );
+}
+
 /** All events for one day - opened from "+N more" in the month grid. */
 export function dayDialog(ctx: AppContext, day: Date): void {
   const id = 'day-title';

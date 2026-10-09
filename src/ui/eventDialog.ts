@@ -1,11 +1,16 @@
 import { CATEGORIES } from '../core/categories';
-import { dateKey, parseDateKey, startOfDay } from '../core/dates';
+import { addDays, dateKey, parseDateKey, startOfDay, weekdayLabels } from '../core/dates';
 import { reminderLabel } from '../core/duration';
-import type { CalEvent, CategoryId, EventDraft, Recurrence, RecurrenceFreq } from '../core/types';
+import { eventSpan } from '../core/occurrences';
+import { retargetSeries } from '../core/series';
+import type { CalEvent, CategoryId, EventDraft, Occurrence, Recurrence, RecurrenceFreq } from '../core/types';
 import { instantToWallString, listTimeZones, localTimeZone, wallStringToInstant } from '../core/tz';
 import { newUid, pad2 } from '../core/util';
 import type { AppContext, NewEventInit } from './context';
 import { h, icon } from './dom';
+import { detachOccurrence, excludeOccurrence } from '../state/actions';
+import { scopeDialog } from './dialogs';
+import { fmtDayShort } from './format';
 import { modalHeader, openModal } from './modal';
 import { toast } from './toast';
 import { notificationState, requestNotifications } from '../services/notifications';
@@ -23,6 +28,8 @@ interface FormModel {
   endTime: string;
   tz: string;
   freq: RecurrenceFreq | 'none';
+  /** Extra weekdays for weekly repeats (0 = Sunday). The start's own weekday is always included. */
+  weekdays: number[];
   interval: number;
   ends: 'never' | 'until' | 'count';
   until: string;
@@ -49,13 +56,14 @@ const wallMs = (date: string, time: string): number => {
   return Date.UTC(y, m - 1, d, hh, mm);
 };
 
-function modelFromEvent(ev: CalEvent): FormModel {
+function modelFromEvent(ev: CalEvent, occ?: Occurrence): FormModel {
   const rec = ev.recurrence;
   const base = {
     title: ev.title,
     allDay: ev.allDay,
     tz: ev.tz,
     freq: rec?.freq ?? ('none' as const),
+    weekdays: rec?.weekdays ?? [],
     interval: rec?.interval ?? 1,
     ends: rec?.until ? ('until' as const) : rec?.count ? ('count' as const) : ('never' as const),
     until: rec?.until ?? '',
@@ -65,9 +73,14 @@ function modelFromEvent(ev: CalEvent): FormModel {
     location: ev.location,
     description: ev.description,
   };
-  if (ev.allDay) return { ...base, startDate: ev.start, startTime: '09:00', endDate: ev.end, endTime: '10:00' };
-  const [startDate, startTime] = splitWall(instantToWallString(Date.parse(ev.start), ev.tz));
-  const [endDate, endTime] = splitWall(instantToWallString(Date.parse(ev.end), ev.tz));
+  // When an occurrence of a repeating event was opened, show that occurrence's date, not the series start.
+  if (ev.allDay) {
+    const startDate = occ ? dateKey(occ.start) : ev.start;
+    const endDate = occ ? dateKey(addDays(occ.end, -1)) : ev.end;
+    return { ...base, startDate, startTime: '09:00', endDate, endTime: '10:00' };
+  }
+  const [startDate, startTime] = splitWall(instantToWallString(occ ? occ.start.getTime() : Date.parse(ev.start), ev.tz));
+  const [endDate, endTime] = splitWall(instantToWallString(occ ? occ.end.getTime() : Date.parse(ev.end), ev.tz));
   return { ...base, startDate, startTime, endDate, endTime };
 }
 
@@ -92,6 +105,7 @@ function modelFromInit(init: NewEventInit, selected: Date): FormModel {
     endTime,
     tz: localTimeZone(),
     freq: 'none',
+    weekdays: [],
     interval: 1,
     ends: 'never',
     until: '',
@@ -103,9 +117,21 @@ function modelFromInit(init: NewEventInit, selected: Date): FormModel {
   };
 }
 
-export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | { init: NewEventInit }): void {
+export function openEventDialog(
+  ctx: AppContext,
+  target: { event: CalEvent; occurrence?: Occurrence } | { init: NewEventInit },
+): void {
   const editing = 'event' in target ? target.event : null;
-  const model: FormModel = 'event' in target ? modelFromEvent(target.event) : modelFromInit(target.init, ctx.nav.selected);
+  const model: FormModel = 'event' in target ? modelFromEvent(target.event, target.occurrence) : modelFromInit(target.init, ctx.nav.selected);
+  // Which occurrence is being edited (the series' first one when opened from search).
+  const occurrenceStart: Date | null = !('event' in target)
+    ? null
+    : target.occurrence
+      ? target.occurrence.start
+      : (() => { const sp = eventSpan(target.event); return sp ? new Date(sp.startMs) : null; })();
+  const occurrenceRef: Pick<Occurrence, 'start' | 'end' | 'allDay'> | null = !('event' in target) || !occurrenceStart
+    ? null
+    : target.occurrence ?? (() => { const sp = eventSpan(target.event); return sp ? { start: new Date(sp.startMs), end: new Date(sp.endMs), allDay: target.event.allDay } : null; })();
   let dirty = false;
   const touch = () => { dirty = true; };
 
@@ -121,9 +147,9 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
   const title = h('input', { type: 'text', id: 'ev-title', class: 'input input-title', placeholder: 'Add title', value: model.title, maxlength: '200', autocomplete: 'off', 'aria-required': 'true' });
   const allDay = h('input', { type: 'checkbox', id: 'ev-allday', checked: model.allDay });
   const startDate = h('input', { type: 'date', id: 'ev-start-date', class: 'input', value: model.startDate, required: true });
-  const startTime = h('input', { type: 'time', id: 'ev-start-time', class: 'input', value: model.startTime, step: '300' });
+  const startTime = h('input', { type: 'time', id: 'ev-start-time', class: 'input', value: model.startTime, step: '300', 'aria-label': 'Start time' });
   const endDate = h('input', { type: 'date', id: 'ev-end-date', class: 'input', value: model.endDate, required: true });
-  const endTime = h('input', { type: 'time', id: 'ev-end-time', class: 'input', value: model.endTime, step: '300' });
+  const endTime = h('input', { type: 'time', id: 'ev-end-time', class: 'input', value: model.endTime, step: '300', 'aria-label': 'End time' });
 
   const zones = listTimeZones();
   if (!zones.includes(model.tz)) zones.unshift(model.tz);
@@ -228,8 +254,40 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
     renderReminders();
   };
 
+  // -- weekly weekdays ---------------------------------------------------------------
+  const chosenWeekdays = new Set<number>(model.weekdays);
+  const weekdayRow = h('div', { class: 'chip-row', role: 'group', 'aria-label': 'Repeat on' });
+  const startWeekday = (): number => {
+    const d = parseDateKey(startDate.value);
+    return d ? d.getDay() : 0;
+  };
+  const renderWeekdays = () => {
+    const names = weekdayLabels(0, 'short');
+    const own = startWeekday();
+    weekdayRow.replaceChildren(
+      ...names.map((name, day) =>
+        h('button', {
+          type: 'button',
+          class: 'chip-btn',
+          text: name,
+          disabled: day === own,
+          'aria-pressed': String(day === own || chosenWeekdays.has(day)),
+          on: {
+            click: () => {
+              if (chosenWeekdays.has(day)) chosenWeekdays.delete(day);
+              else chosenWeekdays.add(day);
+              touch();
+              renderWeekdays();
+            },
+          },
+        }),
+      ),
+    );
+  };
+
   // -- behaviour --------------------------------------------------------------------
   const syncVisibility = () => {
+    weekdayRow.hidden = freq.value !== 'weekly';
     const timed = !allDay.checked;
     for (const el of [startTime, endTime]) el.hidden = !timed;
     tzField.hidden = !timed;
@@ -249,6 +307,7 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
   // Moving the start moves the end with it, so the duration is kept (as calendar apps do).
   const onStartChange = () => {
     if (!startDate.value) return;
+    renderWeekdays();
     const [d, t] = shiftWall(startDate.value, allDay.checked ? '00:00' : startTime.value || '00:00', lastDurationMs);
     endDate.value = d;
     if (!allDay.checked) endTime.value = t;
@@ -292,6 +351,10 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
     if (freq.value !== 'none') {
       const n = Math.max(1, Math.min(99, Math.floor(Number(interval.value)) || 1));
       recurrence = { freq: freq.value as RecurrenceFreq, interval: n };
+      if (recurrence.freq === 'weekly') {
+        const days = new Set([...chosenWeekdays, startWeekday()]);
+        if (days.size > 1) recurrence.weekdays = [...days].sort((a, b) => a - b);
+      }
       if (ends.value === 'until') {
         if (!until.value || until.value < startDate.value) { showError('Choose an end date on or after the start date.', until); return null; }
         recurrence.until = until.value;
@@ -328,18 +391,76 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
     }
   };
 
+  const finish = (draft: EventDraft, message: string) => {
+    toast(message, { kind: 'success', action: { label: 'Undo', run: () => ctx.store.undo() } });
+    modal.close();
+    void afterSave(draft);
+  };
+
   const save = () => {
     const draft = buildDraft();
     if (!draft) return;
-    if (editing) {
-      ctx.store.update(editing.id, { ...draft, recurrence: draft.recurrence });
-      toast('Event updated', { kind: 'success', action: { label: 'Undo', run: () => ctx.store.undo() } });
-    } else {
+    if (!editing) {
       ctx.store.add(draft);
-      toast('Event created', { kind: 'success', action: { label: 'Undo', run: () => ctx.store.undo() } });
+      finish(draft, 'Event created');
+      return;
     }
-    modal.close();
-    void afterSave(draft);
+
+    const applyAll = () => {
+      // Edits made while viewing a later occurrence retime the series by the same amount.
+      const span = editing.recurrence && occurrenceStart ? retargetSeries(editing, occurrenceStart, draft) : { start: draft.start, end: draft.end };
+      const moved = span.start !== editing.start || span.end !== editing.end || draft.allDay !== editing.allDay;
+      ctx.store.update(editing.id, { ...draft, ...span, recurrence: draft.recurrence, ...(moved ? { exdates: undefined } : {}) });
+      finish(draft, editing.recurrence ? 'All events updated' : 'Event updated');
+    };
+    const applyThis = () => {
+      if (!occurrenceRef) return;
+      const { recurrence: _r, ...fields } = draft;
+      detachOccurrence(ctx.store, editing.id, occurrenceRef, fields, 'Event updated');
+      finish(draft, 'Event updated');
+    };
+
+    const ruleChanged = JSON.stringify(draft.recurrence ?? null) !== JSON.stringify(editing.recurrence ?? null);
+    if (!editing.recurrence || ruleChanged) {
+      applyAll();
+      return;
+    }
+    scopeDialog({
+      title: 'Edit repeating event',
+      message: `This event repeats. Apply your changes to just the occurrence on ${occurrenceStart ? fmtDayShort(occurrenceStart) : 'this day'}, or to every occurrence?`,
+      thisLabel: 'This event only',
+      allLabel: 'All events',
+      onChoose: (scope) => (scope === 'this' ? applyThis() : applyAll()),
+    });
+  };
+
+  const remove = () => {
+    if (!editing) return;
+    const done = (message: string) => {
+      modal.close();
+      toast(message, { action: { label: 'Undo', run: () => ctx.store.undo() } });
+    };
+    if (!editing.recurrence || !occurrenceRef) {
+      ctx.store.remove(editing.id);
+      done(`Deleted “${editing.title}”`);
+      return;
+    }
+    scopeDialog({
+      title: 'Delete repeating event',
+      message: `Delete just the occurrence on ${occurrenceStart ? fmtDayShort(occurrenceStart) : 'this day'}, or every occurrence?`,
+      thisLabel: 'This event only',
+      allLabel: 'All events',
+      danger: true,
+      onChoose: (scope) => {
+        if (scope === 'this') {
+          excludeOccurrence(ctx.store, editing.id, occurrenceRef);
+          done('Deleted this occurrence');
+        } else {
+          ctx.store.remove(editing.id);
+          done(`Deleted “${editing.title}”`);
+        }
+      },
+    });
   };
 
   const fieldRow = (label: string, forId: string, ...controls: Parameters<typeof h>[2][]) =>
@@ -350,6 +471,7 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
     'div',
     { class: 'repeat-opts' },
     h('div', { class: 'inline' }, h('span', { class: 'muted', text: 'Every' }), interval, intervalUnit),
+    weekdayRow,
     h('div', { class: 'inline' }, ends, until, count, countUnit),
   );
 
@@ -363,6 +485,9 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
     h(
       'div',
       { class: 'modal-body' },
+      editing?.recurrence && occurrenceStart
+        ? h('p', { class: 'banner' }, icon('repeat', 14), `Repeating event. You are editing the occurrence on ${fmtDayShort(occurrenceStart)}.`)
+        : null,
       h('div', { class: 'field' }, h('label', { class: 'sr-only', for: 'ev-title', text: 'Title' }), title),
       h('label', { class: 'switch', for: 'ev-allday' }, allDay, h('span', { class: 'switch-track', 'aria-hidden': 'true' }), h('span', { text: 'All day' })),
       h('div', { class: 'when-grid' },
@@ -376,7 +501,6 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
         h('div', { class: 'inline' }, customValue, customUnit, h('button', { type: 'button', class: 'btn btn-sm', text: 'Add', on: { click: addCustom } }))),
       fieldRow('Location', 'ev-location', location),
       fieldRow('Notes', 'ev-notes', description),
-      editing?.recurrence || freq.value !== 'none' ? h('p', { class: 'muted small', text: 'Changes apply to every occurrence of a repeating event.' }) : null,
       err,
     ),
     h(
@@ -384,11 +508,7 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
       { class: 'modal-foot' },
       editing
         ? h('div', { class: 'foot-left' },
-            h('button', { type: 'button', class: 'btn btn-danger-ghost', on: { click: () => {
-              ctx.store.remove(editing.id);
-              modal.close();
-              toast(`Deleted “${editing.title}”`, { action: { label: 'Undo', run: () => ctx.store.undo() } });
-            } } }, icon('trash', 16), 'Delete'),
+            h('button', { type: 'button', class: 'btn btn-danger-ghost', on: { click: remove } }, icon('trash', 16), 'Delete'),
             h('button', { type: 'button', class: 'btn btn-ghost', on: { click: () => {
               ctx.store.add({ ...editing, id: undefined, uid: newUid(), title: `${editing.title} (copy)` } as EventDraft);
               modal.close();
@@ -410,6 +530,7 @@ export function openEventDialog(ctx: AppContext, target: { event: CalEvent } | {
   });
 
   renderReminders();
+  renderWeekdays();
   syncVisibility();
   if (!editing) title.focus();
 }

@@ -1,6 +1,6 @@
 import { CATEGORIES } from '../core/categories';
-import { addDays, parseDateKey, startOfDay, startOfWeek } from '../core/dates';
-import { expandEvents } from '../core/occurrences';
+import { addMonths, startOfDay, startOfWeek } from '../core/dates';
+import { eventSpan, expandEvents } from '../core/occurrences';
 import { parseQuickAdd } from '../core/quickparse';
 import { reminderLabel } from '../core/duration';
 import type { DueReminder } from '../core/reminders';
@@ -8,6 +8,7 @@ import type { CategoryId, Occurrence, ViewMode } from '../core/types';
 import { exportAll, importFiles } from '../services/calendarIO';
 import { ReminderService } from '../services/reminderService';
 import { showSystemNotification } from '../services/notifications';
+import { detachOccurrence, shiftedSpan } from '../state/actions';
 import { EventStore, STORAGE_KEY } from '../state/store';
 import { PrefsStore } from '../state/prefs';
 import type { AppContext, NewEventInit } from './context';
@@ -16,6 +17,8 @@ import { dayDialog, shortcutsDialog } from './dialogs';
 import { clear, h, icon, iconButton } from './dom';
 import { openEventDialog } from './eventDialog';
 import { fmtMonthYear, fmtTime, fmtWeekRange } from './format';
+import { miniMonth, takePendingMiniFocus } from './miniMonth';
+import { mountMovedBanner } from './moved';
 import { Nav } from './nav';
 import { createSearch } from './search';
 import { openSettings } from './settingsDialog';
@@ -45,9 +48,9 @@ export function mountApp(root: HTMLElement): void {
       const off = hidden();
       return expandEvents(off.size ? store.list().filter((e) => !off.has(e.category)) : store.list(), from, to);
     },
-    openEvent(id) {
+    openEvent(id, occurrence) {
       const event = store.get(id);
-      if (event) openEventDialog(ctx, { event });
+      if (event) openEventDialog(ctx, { event, occurrence });
     },
     newEvent(init) {
       openEventDialog(ctx, { init: init ?? {} });
@@ -55,22 +58,33 @@ export function mountApp(root: HTMLElement): void {
     openDay(day) {
       dayDialog(ctx, day);
     },
-    moveEvent(id, deltaDays, deltaMinutes = 0) {
+    resizeEvent(id, deltaMinutes, occurrence) {
+      const ev = store.get(id);
+      if (!ev || ev.allDay || deltaMinutes === 0) return;
+      const span = eventSpan(ev);
+      if (!span) return;
+      const startMs = occurrence ? occurrence.start.getTime() : span.startMs;
+      const endMs = (occurrence ? occurrence.end.getTime() : span.endMs) + deltaMinutes * 60_000;
+      if (endMs <= startMs) return; // an event always keeps a positive length
+      const end = new Date(endMs).toISOString();
+      if (ev.recurrence && occurrence) {
+        detachOccurrence(store, id, occurrence, { start: new Date(startMs).toISOString(), end }, 'Event resized');
+      } else {
+        store.update(id, { end }, 'Event resized');
+      }
+      toast('Event resized', { action: { label: 'Undo', run: () => store.undo() } });
+    },
+    moveEvent(id, deltaDays, deltaMinutes = 0, occurrence) {
       const ev = store.get(id);
       if (!ev) return;
-      if (ev.allDay) {
-        const s = parseDateKey(ev.start);
-        const e = parseDateKey(ev.end);
-        if (!s || !e) return;
-        const key = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        store.update(id, { start: key(addDays(s, deltaDays)), end: key(addDays(e, deltaDays)) }, 'Event moved');
+      if (ev.recurrence && occurrence) {
+        // Dragging one occurrence of a series moves just that one.
+        detachOccurrence(store, id, occurrence, shiftedSpan(occurrence, deltaDays, deltaMinutes), 'Event moved');
       } else {
-        const s = new Date(ev.start);
-        const duration = Date.parse(ev.end) - s.getTime();
-        // setDate keeps the local wall-clock time across DST changes.
-        s.setDate(s.getDate() + deltaDays);
-        const start = new Date(s.getTime() + deltaMinutes * 60_000);
-        store.update(id, { start: start.toISOString(), end: new Date(start.getTime() + duration).toISOString() }, 'Event moved');
+        const span = eventSpan(ev);
+        if (!span) return;
+        const own = { start: new Date(span.startMs), end: new Date(span.endMs), allDay: ev.allDay };
+        store.update(id, shiftedSpan(own, deltaDays, deltaMinutes), 'Event moved');
       }
       toast('Event moved', { action: { label: 'Undo', run: () => store.undo() } });
     },
@@ -99,6 +113,7 @@ export function mountApp(root: HTMLElement): void {
     ),
   );
 
+  const sidebarMini = h('div', { class: 'sidebar-mini' });
   const sidebarDay = h('div', { class: 'sidebar-day' });
   const filterList = h(
     'ul',
@@ -169,6 +184,7 @@ export function mountApp(root: HTMLElement): void {
     { class: 'sidebar', id: 'sidebar', 'aria-label': 'Sidebar' },
     h('button', { type: 'button', class: 'btn btn-primary btn-create', on: { click: () => { closeSidebar(); ctx.newEvent({ date: nav.selected }); } } }, icon('plus', 18), 'Create event'),
     quickForm,
+    sidebarMini,
     sidebarDay,
     h('section', { class: 'sidebar-section' }, h('h2', { class: 'sidebar-heading', text: 'Calendars' }), filterList),
     h(
@@ -208,12 +224,30 @@ export function mountApp(root: HTMLElement): void {
   const view = h('main', { class: 'view', id: 'view', tabindex: '-1' });
   const fab = h('button', { type: 'button', class: 'fab', 'aria-label': 'Create event', on: { click: () => ctx.newEvent({ date: nav.selected }) } }, icon('plus', 24));
 
-  root.append(h('div', { class: 'app' }, header, h('div', { class: 'layout' }, sidebar, view)), scrim, fab);
+  const shell = h('div', { class: 'app' }, header, h('div', { class: 'layout' }, sidebar, view));
+  root.append(shell, scrim, fab);
+  mountMovedBanner(shell, store);
 
   // -- rendering ----------------------------------------------------------------
   const periodTitle = (): string => {
     if (nav.view === 'week') return fmtWeekRange(startOfWeek(nav.anchor, prefs.get().weekStart));
     return fmtMonthYear(nav.anchor);
+  };
+
+  let miniAnchor = nav.anchor;
+  let miniSyncedMonth = nav.anchor.getFullYear() * 12 + nav.anchor.getMonth();
+  const renderMini = () => {
+    // Rebuilding destroys the focused button; remember which one it was and focus its replacement.
+    const active = document.activeElement as HTMLElement | null;
+    const pending = takePendingMiniFocus();
+    const focusKey = pending
+      ? `[data-date="${pending}"]`
+      : active && sidebarMini.contains(active)
+        ? active.dataset.date ? `[data-date="${active.dataset.date}"]` : `[aria-label="${active.getAttribute('aria-label')}"]`
+        : null;
+    clear(sidebarMini);
+    sidebarMini.append(miniMonth(ctx, miniAnchor, (dir) => { miniAnchor = addMonths(miniAnchor, dir); renderMini(); }));
+    if (focusKey) sidebarMini.querySelector<HTMLElement>(focusKey)?.focus({ preventScroll: true });
   };
 
   const render = () => {
@@ -231,6 +265,13 @@ export function mountApp(root: HTMLElement): void {
     else if (nav.view === 'week') renderWeek(view, ctx);
     else renderAgenda(view, ctx);
 
+    // The mini calendar follows the main view's month, but can then be browsed independently.
+    const anchorMonth = nav.anchor.getFullYear() * 12 + nav.anchor.getMonth();
+    if (anchorMonth !== miniSyncedMonth) {
+      miniSyncedMonth = anchorMonth;
+      miniAnchor = nav.anchor;
+    }
+    renderMini();
     clear(sidebarDay);
     sidebarDay.append(dayPanel(ctx, nav.selected));
 
@@ -247,7 +288,14 @@ export function mountApp(root: HTMLElement): void {
     }
   };
 
-  store.subscribe(render);
+  let warnedStorage = false;
+  store.subscribe(() => {
+    if (store.persistError && !warnedStorage) {
+      warnedStorage = true;
+      toast('Calibridge could not save to this browser (storage may be full or disabled). Export your events to avoid losing them.', { kind: 'error', duration: 15_000 });
+    }
+    render();
+  });
   nav.subscribe(render);
   prefs.subscribe(() => { applyTheme(); render(); });
   media.addEventListener('change', () => { applyTheme(); render(); });
