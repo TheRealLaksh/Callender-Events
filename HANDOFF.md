@@ -13,7 +13,10 @@ Tailwind page) and was rebuilt on 9 Oct 2026 as a typed, tested app (PR #1 and #
 
 | What | Where |
 |---|---|
-| Live site | https://calibridge.lakshpradhwani.com (Netlify site `calibridge`, also calibridge.netlify.app; old `events.lakshp.live` is dead) |
+| Live site | https://calibridge.lakshpradhwani.com (hosted on **Vercel** since 9 Oct 2026; old `events.lakshp.live` is dead) |
+| Vercel project | `calibridge` (id `prj_hpCSP9AhnkFbTK1NukSrWILkFQav`) in team `lakshs-projects-199ab745`, linked to the GitHub repo, production branch `main`; also calibridge.vercel.app |
+| Old Netlify site | `calibridge` (calibridge.netlify.app), now unused and still serving the OLD logo; the custom domain is still attached there but DNS no longer points to it |
+| DNS | Cloudflare zone `lakshpradhwani.com`: `calibridge` CNAME -> `92addaec07b0de77.vercel-dns-017.com` (DNS only, changed 9 Oct 2026) |
 | GitHub | https://github.com/TheRealLaksh/Callender-Events (public, branch `main`; the repo name is the old one) |
 | Local code | `C:\Users\laksh\OneDrive\Documents\Personal Projects\Calibridge` (cloned 9 Oct 2026) |
 | LinkedIn project entry | https://www.linkedin.com/in/laksh-pradhwani/details/projects/ ("Calibridge (Offline-First Calendar PWA)", updated 9 Oct 2026) |
@@ -23,7 +26,7 @@ Tailwind page) and was rebuilt on 9 Oct 2026 as a typed, tested app (PR #1 and #
 
 - Vite 7, strict TypeScript, no UI framework, `vite-plugin-pwa`. Vitest (71 unit tests) and Playwright (43 e2e tests, axe a11y audits).
 - `npm install`, then `npm run dev`, `npm run build`, `npm run test:all` (typecheck + unit + e2e; first e2e run needs `npx playwright install chromium`).
-- Deploy: push to `main`, Netlify builds `npm run build` and publishes `dist/` (`netlify.toml` has headers and a strict CSP).
+- Deploy: push to `main`, Vercel builds `npm run build` and publishes `dist/` (`vercel.json` holds the security headers and caching; keep it in sync with `netlify.toml`, which is now unused). The strict CSP is injected into the page by `vite.config.ts`.
 - The README has the full feature list, data format (`calibridge:v2` in localStorage) and known limitations.
 
 ## Code map
@@ -42,19 +45,20 @@ scaled to 78% and 94%). To change the logo, edit `favicon.svg`, then re-render a
 
 ## Status
 
-- App is live and complete, but the **live site still shows the OLD logo**. The new logo is on `main` (commit `d4d9aed`) and CI passed, but Netlify production deploys are paused until 26 Oct 2026 (free credits used up), so nothing built.
-- LinkedIn Projects entry is fully updated (text, link, dates, skills) and its card shows the new logo, uploaded as a custom thumbnail (LinkedIn would otherwise read the live og:image, which is still the old one).
+- App is live on Vercel with the **new logo** (verified 9 Oct 2026: icon hash matches `public/icon-512.png`, manifest, service worker and security headers all serve correctly).
+- LinkedIn Projects entry is fully updated (text, link, dates, skills) and its card shows the new logo as a custom thumbnail.
+- Moved from Netlify because its production deploys are paused until 26 Oct 2026 (free credits used up).
 
 ## Next steps
 
-1. Get the new logo live: either wait for the Netlify credit reset on 26 Oct (then trigger a deploy of `main`), or move Calibridge to Vercel (needs the Cloudflare CNAME for `calibridge` changed from Netlify to Vercel; Laksh to decide).
-2. Once live, check `https://calibridge.lakshpradhwani.com/icon-512.png` matches `public/icon-512.png` and that LinkedIn still looks right.
-3. Update `Past Projects (2025).md` and `Links & Accounts.md` in the vault: they still list `events.lakshp.live` and the old repo description.
-4. Rename the GitHub repo from `Callender-Events` to `Calibridge` if wanted (needs the Netlify link and README URLs checked afterwards).
+1. Optionally remove `calibridge.lakshpradhwani.com` from the old Netlify site and stop its builds (it is unused now).
+2. Update `Past Projects (2025).md` and `Links & Accounts.md` in the vault: they still list `events.lakshp.live` and the old repo description.
+3. Rename the GitHub repo from `Callender-Events` to `Calibridge` if wanted (then check the Vercel link and README URLs).
+4. Optional: run `npm run test:all` against the Vercel build once to confirm the e2e suite still passes there (it passed in CI on the same code).
 
 ## Open questions / waiting on others
 
-- Hosting: wait until 26 Oct for Netlify, or move Calibridge to Vercel now? (Laksh to decide.)
+- None.
 
 ## Decisions not to undo
 
@@ -64,18 +68,20 @@ scaled to 78% and 94%). To change the logo, edit `favicon.svg`, then re-render a
 
 ## Session log (newest first)
 
+- 2026-10-09 (evening): Moved hosting from Netlify to Vercel. Added `vercel.json` (same headers as `netlify.toml`), created the Vercel project from the GitHub repo, attached `calibridge.lakshpradhwani.com`, switched the Cloudflare CNAME to Vercel. Verified the new logo and headers are live.
 - 2026-10-09 (later): Found the push did not deploy (Netlify credits paused). Re-added the LinkedIn Calibridge link card with the new logo uploaded as its thumbnail. Updated this file.
 - 2026-10-09: Redrew the logo (day-dot arch over a bridge deck), regenerated favicon and all PNG icons, pushed (`d4d9aed`). Cloned the repo locally and added HANDOFF.md, CLAUDE.md, the Stop hook and the pre-commit hook. Updated the LinkedIn Projects entry earlier the same day.
 
 <!-- handoff:auto:start -->
 ## Auto: repo state
 
-_Refreshed 9 Oct 2026, 8:19 pm IST by `scripts/handoff.mjs` (runs on every commit). Don't edit inside this block._
+_Refreshed 9 Oct 2026, 8:24 pm IST by `scripts/handoff.mjs` (runs on every commit). Don't edit inside this block._
 
 Branch: `main` · remote: https://github.com/TheRealLaksh/Callender-Events.git
 
 ### Last 15 commits
 
+- `07442fe` 2026-10-09 20:19 Add vercel.json: same headers and caching as netlify.toml
 - `be042ba` 2026-10-09 20:15 Handoff: logo is on main but not live (Netlify deploys paused until 26 Oct)
 - `8968294` 2026-10-09 20:09 Add HANDOFF.md with Stop and pre-commit hooks that keep it current
 - `d4d9aed` 2026-10-09 20:08 Redraw the Calibridge logo: an arch of days over a bridge deck
@@ -90,11 +96,10 @@ Branch: `main` · remote: https://github.com/TheRealLaksh/Callender-Events.git
 - `ab36907` 2025-11-20 22:47 update
 - `738f325` 2025-11-20 21:50 update
 - `670b5b3` 2025-11-20 20:33 update
-- `1d36b10` 2025-11-20 20:24 update
 
 ### Uncommitted changes at refresh time
 
 ```
-A  vercel.json
+M  HANDOFF.md
 ```
 <!-- handoff:auto:end -->
