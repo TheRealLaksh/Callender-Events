@@ -485,6 +485,9 @@ export function openEventDialog(
     h(
       'div',
       { class: 'modal-body' },
+      editing?.recurrence && occurrenceStart
+        ? h('p', { class: 'banner' }, icon('repeat', 14), `Repeating event. You are editing the occurrence on ${fmtDayShort(occurrenceStart)}.`)
+        : null,
       h('div', { class: 'field' }, h('label', { class: 'sr-only', for: 'ev-title', text: 'Title' }), title),
       h('label', { class: 'switch', for: 'ev-allday' }, allDay, h('span', { class: 'switch-track', 'aria-hidden': 'true' }), h('span', { text: 'All day' })),
       h('div', { class: 'when-grid' },
@@ -498,9 +501,6 @@ export function openEventDialog(
         h('div', { class: 'inline' }, customValue, customUnit, h('button', { type: 'button', class: 'btn btn-sm', text: 'Add', on: { click: addCustom } }))),
       fieldRow('Location', 'ev-location', location),
       fieldRow('Notes', 'ev-notes', description),
-      editing?.recurrence && occurrenceStart
-        ? h('p', { class: 'banner' }, icon('repeat', 14), `Repeating event. You are editing the occurrence on ${fmtDayShort(occurrenceStart)}.`)
-        : null,
       err,
     ),
     h(

@@ -1,5 +1,5 @@
 import { CATEGORIES } from '../core/categories';
-import { startOfDay, startOfWeek } from '../core/dates';
+import { addMonths, startOfDay, startOfWeek } from '../core/dates';
 import { eventSpan, expandEvents } from '../core/occurrences';
 import { parseQuickAdd } from '../core/quickparse';
 import { reminderLabel } from '../core/duration';
@@ -17,6 +17,7 @@ import { dayDialog, shortcutsDialog } from './dialogs';
 import { clear, h, icon, iconButton } from './dom';
 import { openEventDialog } from './eventDialog';
 import { fmtMonthYear, fmtTime, fmtWeekRange } from './format';
+import { miniMonth, takePendingMiniFocus } from './miniMonth';
 import { mountMovedBanner } from './moved';
 import { Nav } from './nav';
 import { createSearch } from './search';
@@ -57,6 +58,22 @@ export function mountApp(root: HTMLElement): void {
     openDay(day) {
       dayDialog(ctx, day);
     },
+    resizeEvent(id, deltaMinutes, occurrence) {
+      const ev = store.get(id);
+      if (!ev || ev.allDay || deltaMinutes === 0) return;
+      const span = eventSpan(ev);
+      if (!span) return;
+      const startMs = occurrence ? occurrence.start.getTime() : span.startMs;
+      const endMs = (occurrence ? occurrence.end.getTime() : span.endMs) + deltaMinutes * 60_000;
+      if (endMs <= startMs) return; // an event always keeps a positive length
+      const end = new Date(endMs).toISOString();
+      if (ev.recurrence && occurrence) {
+        detachOccurrence(store, id, occurrence, { start: new Date(startMs).toISOString(), end }, 'Event resized');
+      } else {
+        store.update(id, { end }, 'Event resized');
+      }
+      toast('Event resized', { action: { label: 'Undo', run: () => store.undo() } });
+    },
     moveEvent(id, deltaDays, deltaMinutes = 0, occurrence) {
       const ev = store.get(id);
       if (!ev) return;
@@ -96,6 +113,7 @@ export function mountApp(root: HTMLElement): void {
     ),
   );
 
+  const sidebarMini = h('div', { class: 'sidebar-mini' });
   const sidebarDay = h('div', { class: 'sidebar-day' });
   const filterList = h(
     'ul',
@@ -166,6 +184,7 @@ export function mountApp(root: HTMLElement): void {
     { class: 'sidebar', id: 'sidebar', 'aria-label': 'Sidebar' },
     h('button', { type: 'button', class: 'btn btn-primary btn-create', on: { click: () => { closeSidebar(); ctx.newEvent({ date: nav.selected }); } } }, icon('plus', 18), 'Create event'),
     quickForm,
+    sidebarMini,
     sidebarDay,
     h('section', { class: 'sidebar-section' }, h('h2', { class: 'sidebar-heading', text: 'Calendars' }), filterList),
     h(
@@ -215,6 +234,22 @@ export function mountApp(root: HTMLElement): void {
     return fmtMonthYear(nav.anchor);
   };
 
+  let miniAnchor = nav.anchor;
+  let miniSyncedMonth = nav.anchor.getFullYear() * 12 + nav.anchor.getMonth();
+  const renderMini = () => {
+    // Rebuilding destroys the focused button; remember which one it was and focus its replacement.
+    const active = document.activeElement as HTMLElement | null;
+    const pending = takePendingMiniFocus();
+    const focusKey = pending
+      ? `[data-date="${pending}"]`
+      : active && sidebarMini.contains(active)
+        ? active.dataset.date ? `[data-date="${active.dataset.date}"]` : `[aria-label="${active.getAttribute('aria-label')}"]`
+        : null;
+    clear(sidebarMini);
+    sidebarMini.append(miniMonth(ctx, miniAnchor, (dir) => { miniAnchor = addMonths(miniAnchor, dir); renderMini(); }));
+    if (focusKey) sidebarMini.querySelector<HTMLElement>(focusKey)?.focus({ preventScroll: true });
+  };
+
   const render = () => {
     const hadFocus = view.contains(document.activeElement);
     const t = periodTitle();
@@ -230,6 +265,13 @@ export function mountApp(root: HTMLElement): void {
     else if (nav.view === 'week') renderWeek(view, ctx);
     else renderAgenda(view, ctx);
 
+    // The mini calendar follows the main view's month, but can then be browsed independently.
+    const anchorMonth = nav.anchor.getFullYear() * 12 + nav.anchor.getMonth();
+    if (anchorMonth !== miniSyncedMonth) {
+      miniSyncedMonth = anchorMonth;
+      miniAnchor = nav.anchor;
+    }
+    renderMini();
     clear(sidebarDay);
     sidebarDay.append(dayPanel(ctx, nav.selected));
 

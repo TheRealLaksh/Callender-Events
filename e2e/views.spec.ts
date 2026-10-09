@@ -67,6 +67,40 @@ test.describe('month view', () => {
   });
 });
 
+test.describe('mini calendar', () => {
+  test('jumps to a date and changes month', async ({ page }) => {
+    await openApp(page, events);
+    await page.keyboard.press('w');
+    await page.locator('.mini-day[data-date="2025-03-20"]').click();
+    await expect(page.locator('.period')).toHaveText('Mar 16 – 22, 2025');
+    await expect(page.locator('.mini-day.selected')).toHaveAttribute('data-date', '2025-03-20');
+    await expect(page.locator('.mini-day.busy[data-date="2025-03-12"]')).toHaveCount(1);
+    // Browsing months in the mini calendar must not move the main week view.
+    await page.getByRole('button', { name: 'Next month' }).click();
+    await expect(page.locator('.mini-title')).toHaveText('April 2025');
+    await expect(page.locator('.period')).toHaveText('Mar 16 – 22, 2025');
+  });
+
+  test('is keyboard operable: one tab stop, arrows move the date and keep focus', async ({ page }) => {
+    await openApp(page, events);
+    const selected = page.locator('.mini-day.selected');
+    await expect(selected).toHaveAttribute('tabindex', '0');
+    expect(await page.locator('.mini-day[tabindex="0"]').count()).toBe(1);
+    await selected.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.mini-day.selected')).toHaveAttribute('data-date', '2025-03-13');
+    await expect(page.locator('.mini-day[data-date="2025-03-13"]')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('.mini-day[data-date="2025-03-20"]')).toBeFocused();
+  });
+
+  test('announces which days have events', async ({ page }) => {
+    await openApp(page, events);
+    await expect(page.locator('.mini-day[data-date="2025-03-12"]')).toHaveAttribute('aria-label', 'Wednesday, March 12, 3 events');
+    await expect(page.locator('.mini-day[data-date="2025-03-19"]')).toHaveAttribute('aria-label', 'Wednesday, March 19');
+  });
+});
+
 test.describe('week view', () => {
   test('lays out overlapping events side by side and shows the current time', async ({ page }) => {
     await openApp(page, events);
@@ -92,8 +126,79 @@ test.describe('week view', () => {
     expect(new Date(after).getTime() - new Date(before).getTime()).toBe(25 * 3600_000);
     await expect(dialog(page)).toHaveCount(0);
 
+    // The click that ends a drag is swallowed, but a deliberate click straight afterwards is not.
     await page.locator('.block', { hasText: 'Team standup' }).click();
     await expect(page.locator('#ev-title')).toHaveValue('Team standup');
+  });
+
+  test('dragging the bottom edge resizes an event (15-minute steps)', async ({ page }) => {
+    await openApp(page, events);
+    await page.keyboard.press('w');
+    const handle = page.locator('.block', { hasText: 'Team standup' }).locator('.block-resize');
+    const box = (await handle.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 52, { steps: 6 }); // +1 hour
+    await page.mouse.up();
+    const e = (await storedEvents(page)).find((x) => x.title === 'Team standup')!;
+    expect(e.start).toBe('2025-03-12T13:00:00.000Z'); // unchanged 09:00 EDT
+    expect(e.end).toBe('2025-03-12T14:30:00.000Z'); // 09:30 -> 10:30
+    await expect(dialog(page)).toHaveCount(0);
+  });
+
+  test('pressing the resize handle without dragging changes nothing, even for a very short event', async ({ page }) => {
+    await openApp(page, [{ title: 'Quick sync', start: '2025-03-12T14:00', end: '2025-03-12T14:10' }]);
+    await page.keyboard.press('w');
+    const handle = page.locator('.block', { hasText: 'Quick sync' }).locator('.block-resize');
+    const box = (await handle.boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    const [e] = await storedEvents(page);
+    expect(e.end).toBe('2025-03-12T18:10:00.000Z');
+    await expect(page.locator('.toast', { hasText: 'resized' })).toHaveCount(0);
+  });
+
+  test('Escape cancels a resize in progress', async ({ page }) => {
+    await openApp(page, events);
+    await page.keyboard.press('w');
+    const handle = page.locator('.block', { hasText: 'Team standup' }).locator('.block-resize');
+    const box = (await handle.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 80, { steps: 5 });
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+    const e = (await storedEvents(page)).find((x) => x.title === 'Team standup')!;
+    expect(e.end).toBe('2025-03-12T13:30:00.000Z');
+  });
+
+  test('a resize cannot run past midnight', async ({ page }) => {
+    await openApp(page, [{ title: 'Late show', start: '2025-03-12T22:00', end: '2025-03-12T23:00' }]);
+    await page.keyboard.press('w');
+    await page.locator('.week-scroll').evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    const handle = page.locator('.block', { hasText: 'Late show' }).locator('.block-resize');
+    const box = (await handle.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 300, { steps: 6 });
+    await page.mouse.up();
+    const e = (await storedEvents(page)).find((x) => x.title === 'Late show')!;
+    expect(e.end).toBe('2025-03-13T04:00:00.000Z'); // 00:00 EDT, not later
+  });
+
+  test('dragging across empty space creates an event for that range', async ({ page }) => {
+    await openApp(page, events);
+    await page.keyboard.press('w');
+    const col = page.locator('.week-col').nth(5); // Friday 14 March
+    const top = (await col.boundingBox())!.y;
+    const x = (await col.boundingBox())!.x + 40;
+    await page.mouse.move(x, top + 13 * 52 + 2);
+    await page.mouse.down();
+    await page.mouse.move(x, top + 13 * 52 + 2 + 104, { steps: 8 }); // two hours down
+    await expect(page.locator('.block.ghost')).toBeVisible();
+    await page.mouse.up();
+    await expect(page.locator('#ev-start-date')).toHaveValue('2025-03-14');
+    await expect(page.locator('#ev-start-time')).toHaveValue('13:00');
+    await expect(page.locator('#ev-end-time')).toHaveValue('15:00');
   });
 
   test('clicking an empty slot starts an event at that time', async ({ page }) => {

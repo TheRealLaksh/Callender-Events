@@ -22,6 +22,8 @@ export interface AppContext {
   openEvent(id: string, occurrence?: Occurrence): void;
   newEvent(init?: NewEventInit): void;
   openDay(day: Date): void;
+  /** Change an event's end by `deltaMinutes` (its start stays). For an occurrence of a repeating event, only that occurrence changes. */
+  resizeEvent(id: string, deltaMinutes: number, occurrence?: Occurrence): void;
   /**
    * Shift an event by whole days (and optionally minutes), keeping its duration. For an occurrence of a
    * repeating event, only that occurrence moves.
