@@ -42,18 +42,19 @@ scaled to 78% and 94%). To change the logo, edit `favicon.svg`, then re-render a
 
 ## Status
 
-- App is live and complete for now. New logo pushed to `main` on 9 Oct 2026 (commit `d4d9aed`) and deployed.
-- LinkedIn Projects entry updated on 9 Oct 2026 (text, link, dates, skills); its thumbnail should follow the new logo (see Next steps).
+- App is live and complete, but the **live site still shows the OLD logo**. The new logo is on `main` (commit `d4d9aed`) and CI passed, but Netlify production deploys are paused until 26 Oct 2026 (free credits used up), so nothing built.
+- LinkedIn Projects entry is fully updated (text, link, dates, skills) and its card shows the new logo, uploaded as a custom thumbnail (LinkedIn would otherwise read the live og:image, which is still the old one).
 
 ## Next steps
 
-1. Confirm the LinkedIn thumbnail shows the new logo (LinkedIn caches link previews; re-add the media link if it still shows the old one).
-2. Update `Past Projects (2025).md` and `Links & Accounts.md` in the vault: they still list `events.lakshp.live` and the old repo description.
-3. Rename the GitHub repo from `Callender-Events` to `Calibridge` if wanted (needs the Netlify link and README URLs checked afterwards).
+1. Get the new logo live: either wait for the Netlify credit reset on 26 Oct (then trigger a deploy of `main`), or move Calibridge to Vercel (needs the Cloudflare CNAME for `calibridge` changed from Netlify to Vercel; Laksh to decide).
+2. Once live, check `https://calibridge.lakshpradhwani.com/icon-512.png` matches `public/icon-512.png` and that LinkedIn still looks right.
+3. Update `Past Projects (2025).md` and `Links & Accounts.md` in the vault: they still list `events.lakshp.live` and the old repo description.
+4. Rename the GitHub repo from `Callender-Events` to `Calibridge` if wanted (needs the Netlify link and README URLs checked afterwards).
 
 ## Open questions / waiting on others
 
-- None.
+- Hosting: wait until 26 Oct for Netlify, or move Calibridge to Vercel now? (Laksh to decide.)
 
 ## Decisions not to undo
 
@@ -63,17 +64,19 @@ scaled to 78% and 94%). To change the logo, edit `favicon.svg`, then re-render a
 
 ## Session log (newest first)
 
+- 2026-10-09 (later): Found the push did not deploy (Netlify credits paused). Re-added the LinkedIn Calibridge link card with the new logo uploaded as its thumbnail. Updated this file.
 - 2026-10-09: Redrew the logo (day-dot arch over a bridge deck), regenerated favicon and all PNG icons, pushed (`d4d9aed`). Cloned the repo locally and added HANDOFF.md, CLAUDE.md, the Stop hook and the pre-commit hook. Updated the LinkedIn Projects entry earlier the same day.
 
 <!-- handoff:auto:start -->
 ## Auto: repo state
 
-_Refreshed 9 Oct 2026, 8:09 pm IST by `scripts/handoff.mjs` (runs on every commit). Don't edit inside this block._
+_Refreshed 9 Oct 2026, 8:15 pm IST by `scripts/handoff.mjs` (runs on every commit). Don't edit inside this block._
 
 Branch: `main` · remote: https://github.com/TheRealLaksh/Callender-Events.git
 
 ### Last 15 commits
 
+- `8968294` 2026-10-09 20:09 Add HANDOFF.md with Stop and pre-commit hooks that keep it current
 - `d4d9aed` 2026-10-09 20:08 Redraw the Calibridge logo: an arch of days over a bridge deck
 - `1eb43a8` 2026-10-09 18:55 Repeating-event exceptions, weekday repeats, resize/drag-create, mini calendar, a11y, e2e suite (#2)
 - `2ec2c88` 2026-10-09 14:52 Rebuild Calibridge as a typed, tested, offline-first PWA (#1)
@@ -88,15 +91,10 @@ Branch: `main` · remote: https://github.com/TheRealLaksh/Callender-Events.git
 - `670b5b3` 2025-11-20 20:33 update
 - `1d36b10` 2025-11-20 20:24 update
 - `51601aa` 2025-11-20 20:09 Update index.html
-- `f69230e` 2025-11-20 20:05 update
 
 ### Uncommitted changes at refresh time
 
 ```
-A  .claude/settings.json
-A  .githooks/pre-commit
-A  CLAUDE.md
-A  HANDOFF.md
-A  scripts/handoff.mjs
+M  HANDOFF.md
 ```
 <!-- handoff:auto:end -->
