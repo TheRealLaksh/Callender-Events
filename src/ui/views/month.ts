@@ -4,14 +4,14 @@ import type { Occurrence } from '../../core/types';
 import type { AppContext } from '../context';
 import { dayPanel } from '../dayPanel';
 import { clear, h, icon } from '../dom';
-import { describeOccurrence, fmtDayLong, fmtTime } from '../format';
+import { describeOccurrence, fmtDayLong, fmtMonthYear, fmtTime } from '../format';
 
 let observer: ResizeObserver | null = null;
 const CHIP_HEIGHT = 22; // 20px chip + 2px gap
 const MORE_HEIGHT = 18;
 
 interface Drag {
-  eventId: string;
+  occurrence: Occurrence;
   fromDay: Date;
 }
 let drag: Drag | null = null;
@@ -63,7 +63,7 @@ export function renderMonth(host: HTMLElement, ctx: AppContext): void {
             (e.currentTarget as HTMLElement).classList.remove('drop');
             if (!drag) return;
             const delta = diffDays(drag.fromDay, day);
-            if (delta !== 0) ctx.moveEvent(drag.eventId, delta);
+            if (delta !== 0) ctx.moveEvent(drag.occurrence.event.id, delta, 0, drag.occurrence);
             drag = null;
           },
         },
@@ -110,8 +110,12 @@ export function renderMonth(host: HTMLElement, ctx: AppContext): void {
     return cell;
   });
 
-  const grid = h('div', { class: 'month-grid', role: 'grid', 'aria-label': 'Month' }, cells);
-  host.append(h('div', { class: 'month' }, head, grid), h('div', { class: 'month-day-panel' }, dayPanel(ctx, ctx.nav.selected)));
+  const rows = Array.from({ length: 6 }, (_, i) => h('div', { class: 'month-row', role: 'row' }, cells.slice(i * 7, i * 7 + 7)));
+  const grid = h('div', { class: 'month-grid', role: 'rowgroup' }, rows);
+  host.append(
+    h('div', { class: 'month', role: 'grid', 'aria-label': fmtMonthYear(ctx.nav.anchor) }, head, grid),
+    h('div', { class: 'month-day-panel' }, dayPanel(ctx, ctx.nav.selected)),
+  );
 
   const fit = () => cells.forEach(fitCell);
   observer = new ResizeObserver(fit);
@@ -131,9 +135,9 @@ function chip(o: Occurrence, day: Date, ctx: AppContext): HTMLElement {
       'aria-label': describeOccurrence(o),
       title: o.event.title,
       on: {
-        click: (e) => { e.stopPropagation(); ctx.openEvent(o.event.id); },
+        click: (e) => { e.stopPropagation(); ctx.openEvent(o.event.id, o); },
         dragstart: (e) => {
-          drag = { eventId: o.event.id, fromDay: startOfDay(day) };
+          drag = { occurrence: o, fromDay: startOfDay(day) };
           if (e.dataTransfer) {
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', o.event.title);

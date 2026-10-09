@@ -17,6 +17,10 @@ function normalizeRecurrence(raw: unknown): Recurrence | undefined {
   };
   if (typeof r.until === 'string' && parseDateKey(r.until)) rec.until = r.until;
   else if (Number.isInteger(r.count) && (r.count as number) >= 1) rec.count = r.count as number;
+  if (rec.freq === 'weekly' && Array.isArray(r.weekdays)) {
+    const days = [...new Set(r.weekdays.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+    if (days.length > 0) rec.weekdays = days;
+  }
   return rec;
 }
 
@@ -46,5 +50,9 @@ export function normalizeEvent(raw: unknown): CalEvent | null {
     updatedAt: str(r.updatedAt) || now,
   };
   if (!ev.recurrence) delete ev.recurrence;
+  if (ev.recurrence && Array.isArray(r.exdates)) {
+    const ex = [...new Set(r.exdates.filter((x): x is string => typeof x === 'string'))];
+    if (ex.length > 0) ev.exdates = ex;
+  }
   return eventSpan(ev) ? ev : null;
 }

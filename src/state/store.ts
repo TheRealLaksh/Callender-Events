@@ -83,6 +83,11 @@ export class EventStore {
     return current;
   }
 
+  /** Applies several changes as one undoable step. */
+  transact(label: string, change: (events: readonly CalEvent[]) => readonly CalEvent[]): void {
+    this.commit(change(this.events), label);
+  }
+
   clear(): number {
     const n = this.events.length;
     if (n > 0) this.commit([], `Deleted ${n} event${n === 1 ? '' : 's'}`);

@@ -66,6 +66,34 @@ function make(ev: CalEvent, startMs: number, endMs: number, recurring: boolean):
   };
 }
 
+type YMD = { y: number; m: number; d: number };
+
+const fromUtc = (ms: number): YMD => {
+  const t = new Date(ms);
+  return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
+};
+
+/** Candidate dates for repeat period `k`. Empty when the period has no valid date (e.g. 31 Feb). */
+function periodDates(rec: Recurrence, k: number, base: YMD): YMD[] {
+  if (rec.freq === 'weekly' && rec.weekdays && rec.weekdays.length > 0) {
+    const baseMs = Date.UTC(base.y, base.m - 1, base.d);
+    const mondayMs = baseMs - ((new Date(baseMs).getUTCDay() + 6) % 7) * DAY_MS;
+    // Weeks run Monday-Sunday (RFC 5545's default WKST), so order the chosen days that way.
+    const offsets = rec.weekdays.map((wd) => (wd + 6) % 7).sort((a, b) => a - b);
+    return offsets
+      .map((off) => mondayMs + (7 * rec.interval * k + off) * DAY_MS)
+      .filter((ms) => ms >= baseMs)
+      .map(fromUtc);
+  }
+  const one = nthDate(rec, k, base);
+  return one ? [one] : [];
+}
+
+/** The key under which an occurrence is stored in `exdates`. */
+export function exdateKey(o: Pick<Occurrence, 'start' | 'allDay'>): string {
+  return o.allDay ? dateKey(o.start) : o.start.toISOString();
+}
+
 function expandOne(ev: CalEvent, fromMs: number, toMs: number): Occurrence[] {
   const span = eventSpan(ev);
   if (!span) return [];
@@ -83,31 +111,36 @@ function expandOne(ev: CalEvent, fromMs: number, toMs: number): Occurrence[] {
         return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate(), h: 0, mi: 0 };
       })()
     : wallAt(startMs, tz);
-  const base = { y: w0.y, m: w0.m, d: w0.d };
+  const base: YMD = { y: w0.y, m: w0.m, d: w0.d };
+  const excluded = ev.exdates?.length ? new Set(ev.exdates) : null;
+  const multiDay = rec.freq === 'weekly' && !!rec.weekdays && rec.weekdays.length > 0;
 
-  // Daily/weekly never skip, so we can jump straight to the window.
+  // Daily/weekly never skip, so we can jump straight to the window. With several weekdays per
+  // week the index no longer equals the occurrence count, so only jump when nothing counts them.
   let k = 0;
-  if (rec.freq === 'daily' || rec.freq === 'weekly') {
+  const canJump = rec.freq === 'daily' || rec.freq === 'weekly';
+  if (canJump && (!multiDay || (rec.count === undefined || rec.until !== undefined))) {
     const stepMs = DAY_MS * rec.interval * (rec.freq === 'weekly' ? 7 : 1);
     k = Math.max(0, Math.floor((fromMs - dur - startMs) / stepMs) - 1);
   }
 
   const out: Occurrence[] = [];
-  let emitted = k;
-  for (let guard = 0; guard < MAX_ITERATIONS; guard++, k++) {
-    if (!(rec.until) && rec.count !== undefined && emitted >= rec.count) break;
-    const date = nthDate(rec, k, base);
-    if (!date) continue;
-    if (rec.until && keyOf(date.y, date.m, date.d) > rec.until) break;
-    emitted++;
+  let emitted = multiDay ? 0 : k;
+  outer: for (let guard = 0; guard < MAX_ITERATIONS; guard++, k++) {
+    for (const date of periodDates(rec, k, base)) {
+      if (!rec.until && rec.count !== undefined && emitted >= rec.count) break outer;
+      if (rec.until && keyOf(date.y, date.m, date.d) > rec.until) break outer;
+      emitted++;
 
-    const s = ev.allDay
-      ? new Date(date.y, date.m - 1, date.d).getTime()
-      : wallToInstant({ ...date, h: w0.h, mi: w0.mi, s: w0.s }, tz);
-    const e = ev.allDay ? addDays(new Date(s), Math.round(dur / DAY_MS)).getTime() : s + dur;
+      const s = ev.allDay
+        ? new Date(date.y, date.m - 1, date.d).getTime()
+        : wallToInstant({ ...date, h: w0.h, mi: w0.mi, s: w0.s }, tz);
+      if (s >= toMs) break outer;
+      if (excluded?.has(ev.allDay ? keyOf(date.y, date.m, date.d) : new Date(s).toISOString())) continue;
 
-    if (s >= toMs) break;
-    if (overlaps(s, e)) out.push(make(ev, s, e, true));
+      const e = ev.allDay ? addDays(new Date(s), Math.round(dur / DAY_MS)).getTime() : s + dur;
+      if (overlaps(s, e)) out.push(make(ev, s, e, true));
+    }
   }
   return out;
 }

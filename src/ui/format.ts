@@ -1,6 +1,7 @@
 import { addDays, isSameDay } from '../core/dates';
 import { categoryLabel } from '../core/categories';
 import type { Occurrence } from '../core/types';
+import { isValidTimeZone, localTimeZone } from '../core/tz';
 
 const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' });
 const dayLong = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
@@ -44,4 +45,14 @@ export function describeOccurrence(o: Occurrence): string {
   const parts = [o.event.title, fmtDayShort(o.start), fmtWhen(o), categoryLabel(o.event.category)];
   if (o.event.location) parts.push(o.event.location);
   return parts.join(', ');
+}
+
+/** For an event authored in another zone: its own local time, e.g. "Tokyo 9:00 AM – 10:00 AM". */
+export function fmtOtherZone(o: Occurrence): string | null {
+  if (o.allDay || !isValidTimeZone(o.event.tz) || o.event.tz === localTimeZone()) return null;
+  const tz = o.event.tz;
+  const f = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZone: tz });
+  const city = tz.split('/').pop()?.replace(/_/g, ' ') ?? tz;
+  const range = o.end.getTime() > o.start.getTime() ? `${f.format(o.start)} – ${f.format(o.end)}` : f.format(o.start);
+  return `${city} ${range}`;
 }

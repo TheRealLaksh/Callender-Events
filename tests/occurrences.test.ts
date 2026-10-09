@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dateKey } from '../src/core/dates';
-import { expandEvents, nextOccurrence, occurrencesOnDay } from '../src/core/occurrences';
+import { exdateKey, expandEvents, nextOccurrence, occurrencesOnDay } from '../src/core/occurrences';
 import { instantToWallString, wallStringToInstant } from '../src/core/tz';
 import { ev } from './helpers';
 
@@ -117,6 +117,68 @@ describe('expandEvents', () => {
       expect(occs).toHaveLength(2);
       expect(dateKey(occs[1].start)).toBe('2025-03-10');
       expect(occurrencesOnDay(occs, new Date(2025, 2, 11))).toHaveLength(1);
+    });
+
+    it('repeats on several weekdays per week (Mon/Wed/Fri)', () => {
+      // 2025-03-03 is a Monday
+      const e = ev({
+        start: at('2025-03-03T09:00'),
+        end: at('2025-03-03T09:30'),
+        recurrence: { freq: 'weekly', interval: 1, weekdays: [1, 3, 5] },
+      });
+      const occs = expandEvents([e], new Date(2025, 2, 1), new Date(2025, 2, 15));
+      expect(occs.map((o) => dateKey(o.start))).toEqual(['2025-03-03', '2025-03-05', '2025-03-07', '2025-03-10', '2025-03-12', '2025-03-14']);
+    });
+
+    it('honours the interval for multi-weekday repeats and skips days before the start', () => {
+      // Start on Wednesday 2025-03-05; repeat Mon+Wed every 2 weeks. The Monday of the first week is before the start.
+      const e = ev({
+        start: at('2025-03-05T09:00'),
+        end: at('2025-03-05T10:00'),
+        recurrence: { freq: 'weekly', interval: 2, weekdays: [1, 3] },
+      });
+      const occs = expandEvents([e], new Date(2025, 2, 1), new Date(2025, 3, 15));
+      expect(occs.map((o) => dateKey(o.start))).toEqual(['2025-03-05', '2025-03-17', '2025-03-19', '2025-03-31', '2025-04-02', '2025-04-14']);
+    });
+
+    it('counts every occurrence of a multi-weekday series', () => {
+      const e = ev({
+        start: at('2025-03-03T09:00'),
+        end: at('2025-03-03T10:00'),
+        recurrence: { freq: 'weekly', interval: 1, weekdays: [1, 3, 5], count: 5 },
+      });
+      const occs = expandEvents([e], new Date(2025, 0, 1), new Date(2026, 0, 1));
+      expect(occs.map((o) => dateKey(o.start))).toEqual(['2025-03-03', '2025-03-05', '2025-03-07', '2025-03-10', '2025-03-12']);
+    });
+
+    it('jumps to a far window for multi-weekday series without losing occurrences', () => {
+      const e = ev({
+        start: at('2015-01-05T09:00'),
+        end: at('2015-01-05T10:00'),
+        recurrence: { freq: 'weekly', interval: 1, weekdays: [1, 4] },
+      });
+      const occs = expandEvents([e], new Date(2025, 5, 2), new Date(2025, 5, 9));
+      expect(occs.map((o) => dateKey(o.start))).toEqual(['2025-06-02', '2025-06-05']);
+    });
+
+    it('skips excluded occurrences (timed and all-day)', () => {
+      const e = ev({
+        start: at('2025-03-01T09:00'),
+        end: at('2025-03-01T10:00'),
+        recurrence: { freq: 'daily', interval: 1, count: 4 },
+        exdates: [at('2025-03-02T09:00')],
+      });
+      expect(expandEvents([e], new Date(2025, 2, 1), new Date(2025, 2, 10)).map((o) => dateKey(o.start))).toEqual(['2025-03-01', '2025-03-03', '2025-03-04']);
+      const a = ev({ allDay: true, start: '2025-03-01', end: '2025-03-01', recurrence: { freq: 'daily', interval: 1, count: 3 }, exdates: ['2025-03-02'] });
+      expect(expandEvents([a], new Date(2025, 2, 1), new Date(2025, 2, 10)).map((o) => dateKey(o.start))).toEqual(['2025-03-01', '2025-03-03']);
+    });
+
+    it('builds exdate keys that match what expansion excludes', () => {
+      const e = ev({ start: at('2025-03-01T09:00'), end: at('2025-03-01T10:00'), recurrence: { freq: 'weekly', interval: 1 } });
+      const occ = expandEvents([e], new Date(2025, 2, 8), new Date(2025, 2, 9))[0];
+      const without = { ...e, exdates: [exdateKey(occ)] };
+      expect(expandEvents([without], new Date(2025, 2, 8), new Date(2025, 2, 9))).toHaveLength(0);
+      expect(expandEvents([without], new Date(2025, 2, 15), new Date(2025, 2, 16))).toHaveLength(1);
     });
 
     it('gives each occurrence a unique key', () => {

@@ -72,7 +72,7 @@ export function renderWeek(host: HTMLElement, ctx: AppContext): void {
 
   const scroll = h('div', { class: 'week-scroll' }, body);
   scroll.addEventListener('scroll', () => { scrollTop = scroll.scrollTop; }, { passive: true });
-  host.append(h('div', { class: 'week' }, h('div', { class: 'week-fixed' }, head, allDayRow), scroll));
+  host.append(h('div', { class: 'week' }, h('div', { class: 'week-inner' }, h('div', { class: 'week-fixed' }, head, allDayRow), scroll)));
 
   if (scrollTop === null) {
     const hour = days.some((d) => isSameDay(d, today)) ? Math.max(0, today.getHours() - 2) : 7;
@@ -87,7 +87,7 @@ function allDayChip(o: Occurrence, ctx: AppContext): HTMLElement {
     class: `chip allday cat-${o.event.category}`,
     title: o.event.title,
     'aria-label': describeOccurrence(o),
-    on: { click: () => ctx.openEvent(o.event.id) },
+    on: { click: () => ctx.openEvent(o.event.id, o) },
   }, h('span', { class: 'chip-title', text: o.event.title }));
 }
 
@@ -165,7 +165,7 @@ function attachDrag(block: HTMLElement, o: Occurrence, ctx: AppContext): void {
   block.addEventListener('click', (e) => {
     e.stopPropagation();
     if (justDragged) return; // the click that follows a drag must not open the dialog
-    ctx.openEvent(o.event.id);
+    ctx.openEvent(o.event.id, o);
   });
 
   block.addEventListener('pointerdown', (down) => {
@@ -203,7 +203,7 @@ function attachDrag(block: HTMLElement, o: Occurrence, ctx: AppContext): void {
       if (!dragging) return;
       justDragged = true;
       window.setTimeout(() => { justDragged = false; }, 0);
-      if (e.type === 'pointerup' && (deltaDays !== 0 || deltaMinutes !== 0)) ctx.moveEvent(o.event.id, deltaDays, deltaMinutes);
+      if (e.type === 'pointerup' && (deltaDays !== 0 || deltaMinutes !== 0)) ctx.moveEvent(o.event.id, deltaDays, deltaMinutes, o);
     };
 
     block.addEventListener('pointermove', onMove);

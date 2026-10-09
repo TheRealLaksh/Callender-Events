@@ -2,7 +2,7 @@ import { addDays, dateKey, isSameDay, startOfDay } from '../../core/dates';
 import { occurrencesOnDay } from '../../core/occurrences';
 import type { AppContext } from '../context';
 import { clear, h, icon } from '../dom';
-import { describeOccurrence, fmtDayLong, fmtMonthYear, fmtWhen } from '../format';
+import { describeOccurrence, fmtDayLong, fmtMonthYear, fmtOtherZone, fmtWhen } from '../format';
 
 export function renderAgenda(host: HTMLElement, ctx: AppContext): void {
   clear(host);
@@ -38,7 +38,7 @@ export function renderAgenda(host: HTMLElement, ctx: AppContext): void {
                   type: 'button',
                   class: `agenda-item cat-${o.event.category}`,
                   'aria-label': describeOccurrence(o),
-                  on: { click: () => ctx.openEvent(o.event.id) },
+                  on: { click: () => ctx.openEvent(o.event.id, o) },
                 },
                 h('span', { class: 'agenda-when', text: fmtWhen(o, startOfDay(day)) }),
                 h('span', { class: 'agenda-bar', 'aria-hidden': 'true' }),
@@ -46,6 +46,7 @@ export function renderAgenda(host: HTMLElement, ctx: AppContext): void {
                   'span',
                   { class: 'agenda-main' },
                   h('span', { class: 'agenda-title', text: o.event.title }),
+                  fmtOtherZone(o) ? h('span', { class: 'agenda-sub', text: fmtOtherZone(o) ?? '' }) : null,
                   o.event.location ? h('span', { class: 'agenda-sub', text: o.event.location }) : null,
                 ),
                 o.recurring ? h('span', { class: 'agenda-icon', title: 'Repeats' }, icon('repeat', 14)) : null,
