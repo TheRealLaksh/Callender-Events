@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/handoff.mjs\" check",
+            "timeout": 30,
+            "statusMessage": "Checking HANDOFF.md is up to date"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Refresh the auto block in HANDOFF.md and include it in this commit.
+node scripts/handoff.mjs auto && git add HANDOFF.md
