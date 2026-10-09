@@ -19,16 +19,24 @@ let scrollTop: number | null = null;
  * A drag ends with a `click` that must not also open an editor. The view is rebuilt as soon as the drag commits,
  * so the flag lives at module level (not in a per-element closure that the rebuild would discard).
  */
-let suppressClicksUntil = 0;
+let suppressNextClick = false;
+let suppressTimer = 0;
 const suppressNextClicks = (): void => {
-  suppressClicksUntil = performance.now() + 100;
+  suppressNextClick = true;
+  // Backstop for keyboard-driven clicks, which never produce a pointerdown to reset the flag.
+  window.clearTimeout(suppressTimer);
+  suppressTimer = window.setTimeout(() => { suppressNextClick = false; }, 500);
 };
 /** True for the single click that follows a drag; consumes the flag so later, deliberate clicks work. */
 const clicksSuppressed = (): boolean => {
-  if (performance.now() >= suppressClicksUntil) return false;
-  suppressClicksUntil = 0;
+  if (!suppressNextClick) return false;
+  suppressNextClick = false;
   return true;
 };
+// Every deliberate click starts with a fresh pointerdown, which means the drag's leftover click (if the browser
+// never delivered it) must not be allowed to swallow this one. This is independent of timing, so it holds on slow
+// and fast machines alike.
+window.addEventListener('pointerdown', () => { suppressNextClick = false; }, true);
 
 /** Calls `abort` when Escape is pressed; returns a function that removes the listener. */
 function cancelOnEscape(abort: () => void): () => void {
